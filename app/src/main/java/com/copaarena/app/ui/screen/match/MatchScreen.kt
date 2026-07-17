@@ -140,7 +140,11 @@ fun MatchScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        PlayerMatchCard(player = pA, modifier = Modifier.weight(1f))
+                        PlayerMatchCard(
+                            player = pA,
+                            modifier = Modifier.weight(1f),
+                            isWinner = match?.status == "COMPLETED" && match?.winnerId != null && match?.winnerId == match?.playerAId
+                        )
                         val totalGoals = scoreA + scoreB
                         val scorePunch = remember { Animatable(1f) }
                         LaunchedEffect(totalGoals) {
@@ -158,7 +162,11 @@ fun MatchScreen(
                                 .padding(horizontal = 12.dp)
                                 .scale(scorePunch.value)
                         )
-                        PlayerMatchCard(player = pB, modifier = Modifier.weight(1f))
+                        PlayerMatchCard(
+                            player = pB,
+                            modifier = Modifier.weight(1f),
+                            isWinner = match?.status == "COMPLETED" && match?.winnerId != null && match?.winnerId == match?.playerBId
+                        )
                     }
                 }
             }
@@ -193,6 +201,21 @@ fun MatchScreen(
                     style = MaterialTheme.typography.headlineSmall,
                     color = SuccessColor
                 )
+                val m = match
+                if (m != null && m.penaltyGoalsA != null && m.penaltyGoalsB != null) {
+                    val winnerName = if (m.winnerId == m.playerAId) pA?.name else pB?.name
+                    Text(
+                        "${winnerName ?: "Winner"} won on penalties ${m.penaltyGoalsA}-${m.penaltyGoalsB}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AccentGold
+                    )
+                } else if (m?.isDraw == true) {
+                    Text(
+                        "Match tied",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OnBackground.copy(alpha = 0.6f)
+                    )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedButton(
                     onClick = { navController.popBackStack() },
@@ -456,7 +479,7 @@ fun MatchScreen(
 }
 
 @Composable
-fun PlayerMatchCard(player: PlayerEntity?, modifier: Modifier = Modifier) {
+fun PlayerMatchCard(player: PlayerEntity?, modifier: Modifier = Modifier, isWinner: Boolean = false) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -473,7 +496,7 @@ fun PlayerMatchCard(player: PlayerEntity?, modifier: Modifier = Modifier) {
             player?.name ?: "TBD",
             fontFamily = BebasNeue,
             fontSize = 18.sp,
-            color = OnBackground,
+            color = if (isWinner) AccentGold else OnBackground,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
@@ -481,7 +504,7 @@ fun PlayerMatchCard(player: PlayerEntity?, modifier: Modifier = Modifier) {
         Text(
             player?.teamName ?: "",
             style = MaterialTheme.typography.bodySmall,
-            color = OnBackground.copy(alpha = 0.4f),
+            color = if (isWinner) AccentGold.copy(alpha = 0.7f) else OnBackground.copy(alpha = 0.4f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center

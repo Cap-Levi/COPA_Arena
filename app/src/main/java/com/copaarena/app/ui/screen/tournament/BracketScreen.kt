@@ -386,19 +386,23 @@ fun MatchCard(match: MatchEntity, players: List<PlayerEntity>, isLocked: Boolean
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val aWon = isCompleted && match.winnerId != null && match.winnerId == match.playerAId
+            val bWon = isCompleted && match.winnerId != null && match.winnerId == match.playerBId
+            val decidedByPenalties = match.penaltyGoalsA != null && match.penaltyGoalsB != null
+
             // Player A
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
                 Text(
                     p1?.name ?: "TBD",
                     fontWeight = FontWeight.Bold,
-                    color = OnBackground,
+                    color = if (aWon) AccentGold else OnBackground,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     p1?.teamName ?: "",
                     fontSize = 11.sp,
-                    color = OnBackground.copy(alpha = 0.4f),
+                    color = if (aWon) AccentGold.copy(alpha = 0.7f) else OnBackground.copy(alpha = 0.4f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -412,7 +416,16 @@ fun MatchCard(match: MatchEntity, players: List<PlayerEntity>, isLocked: Boolean
                     fontSize = 24.sp,
                     color = if (isCompleted) AccentGold else OnBackground.copy(alpha = 0.3f)
                 )
-                if (isCompleted) {
+                if (decidedByPenalties) {
+                    Text(
+                        "PENS ${match.penaltyGoalsA} - ${match.penaltyGoalsB}",
+                        fontSize = 9.sp,
+                        color = AccentGold,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else if (isCompleted && match.isDraw) {
+                    Text("TIED", fontSize = 9.sp, color = OnBackground.copy(alpha = 0.5f), fontWeight = FontWeight.Bold)
+                } else if (isCompleted) {
                     Text("FT", fontSize = 9.sp, color = SuccessColor, fontWeight = FontWeight.Bold)
                 } else {
                     Text(
@@ -428,7 +441,7 @@ fun MatchCard(match: MatchEntity, players: List<PlayerEntity>, isLocked: Boolean
                 Text(
                     p2?.name ?: "TBD",
                     fontWeight = FontWeight.Bold,
-                    color = OnBackground,
+                    color = if (bWon) AccentGold else OnBackground,
                     textAlign = TextAlign.End,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -436,7 +449,7 @@ fun MatchCard(match: MatchEntity, players: List<PlayerEntity>, isLocked: Boolean
                 Text(
                     p2?.teamName ?: "",
                     fontSize = 11.sp,
-                    color = OnBackground.copy(alpha = 0.4f),
+                    color = if (bWon) AccentGold.copy(alpha = 0.7f) else OnBackground.copy(alpha = 0.4f),
                     textAlign = TextAlign.End,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
