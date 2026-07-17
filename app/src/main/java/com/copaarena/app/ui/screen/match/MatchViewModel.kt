@@ -167,6 +167,10 @@ class MatchViewModel @Inject constructor(
 
         if (!stillPending) {
             _celebrateFullTime.value = true
+            // Reuse the champion fanfare as a fun win flourish on top of the referee whistle —
+            // every finished match deserves a bit of the same triumphant sting Ceremony uses,
+            // not just the tournament decider.
+            soundManager.playChampionFanfare()
         }
 
         if (tournament.status == "COMPLETED") {

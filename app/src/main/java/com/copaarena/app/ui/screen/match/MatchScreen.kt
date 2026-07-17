@@ -317,10 +317,13 @@ fun MatchScreen(
         )
 
         // ── Full-time celebration (bigger, fullscreen) ──
+        // confetti.json is a genuine ~10s cannon-burst-and-fall animation — cutting it off
+        // after just over a second (the old 1200ms) only ever showed the initial launch frame.
+        // Let it play out a real chunk of the fall before dismissing.
         CelebrationOverlay(
             visible = celebrateFullTime,
             modifier = Modifier.fillMaxSize(),
-            durationMillis = 1200L,
+            durationMillis = 4000L,
             onFinished = { viewModel.consumeFullTimeCelebration() }
         )
 

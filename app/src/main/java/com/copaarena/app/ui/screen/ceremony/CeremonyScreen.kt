@@ -85,11 +85,13 @@ fun CeremonyScreen(
             iterations = LottieConstants.IterateForever
         )
 
-        // One-shot confetti burst timed with the champion reveal
+        // One-shot confetti burst timed with the champion reveal — confetti.json is a real
+        // ~10s cannon-burst-and-fall clip, so give it enough runway to actually read as a burst
+        // rather than being cut off after its first frame.
         CelebrationOverlay(
             visible = showConfetti,
             modifier = Modifier.fillMaxSize(),
-            durationMillis = 1500L,
+            durationMillis = 4500L,
             onFinished = { showConfetti = false }
         )
 
