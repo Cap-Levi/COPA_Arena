@@ -23,10 +23,13 @@ class FixtureOutcomeResolver @Inject constructor() {
         matches.groupBy { Triple(it.tournamentId, it.stage, it.matchNumber) }
 
     /**
-     * @param requireDecisive true for KNOCKOUT stages (QUARTER/SEMI/FINAL) where a single-match
-     * (BO1) draw must go to penalties rather than standing as a real draw; false for GROUP stage.
+     * @param allowDraw whether a still-tied fixture (after full time, and after away-goals/leg-wins
+     * where applicable) may stand as a plain draw. A penalty shootout result — if one has been
+     * entered on any leg — always decides the fixture regardless of this flag; [allowDraw] only
+     * controls what happens when there's *no* shootout data yet: `true` accepts the tie, `false`
+     * returns null (pending) so the caller can ask the user whether penalties were taken.
      */
-    fun resolve(legs: List<MatchEntity>, matchesPerFixture: Int, requireDecisive: Boolean = false): FixtureOutcome? {
+    fun resolve(legs: List<MatchEntity>, matchesPerFixture: Int, allowDraw: Boolean = false): FixtureOutcome? {
         if (legs.isEmpty()) return null
         val first = legs.first()
         if (first.playerAId < 0 || first.playerBId < 0) return null // TBD KO stub, not yet seeded
@@ -35,9 +38,9 @@ class FixtureOutcomeResolver @Inject constructor() {
         val p2 = first.playerBId
 
         return when (matchesPerFixture) {
-            1 -> resolveSingle(legs, p1, p2, requireDecisive)
-            2 -> resolveBestOfTwo(legs, p1, p2)
-            else -> resolveBestOfThree(legs, p1, p2)
+            1 -> resolveSingle(legs, p1, p2, allowDraw)
+            2 -> resolveBestOfTwo(legs, p1, p2, allowDraw)
+            else -> resolveBestOfThree(legs, p1, p2, allowDraw)
         }
     }
 
@@ -61,13 +64,19 @@ class FixtureOutcomeResolver @Inject constructor() {
         return penP1 to penP2
     }
 
-    private fun resolveSingle(legs: List<MatchEntity>, p1: Long, p2: Long, requireDecisive: Boolean): FixtureOutcome? {
+    private fun resolveSingle(legs: List<MatchEntity>, p1: Long, p2: Long, allowDraw: Boolean): FixtureOutcome? {
         val leg = legs.first()
         if (leg.status != "COMPLETED") return null
         val (g1, g2) = aggregate(legs, p1, p2)
         if (g1 != g2) return decisive(p1, p2, g1, g2, decidedByPenalties = false)
 
-        if (!requireDecisive) {
+        val pens = penaltiesFor(legs, p1, p2)
+        if (pens != null) {
+            val (pen1, pen2) = pens
+            val winner = if (pen1 > pen2) p1 else p2
+            return FixtureOutcome(winner, false, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = true, legsToAutoSkip = emptyList())
+        }
+        if (allowDraw) {
             return FixtureOutcome(
                 winnerId = null,
                 isDraw = true,
@@ -77,13 +86,10 @@ class FixtureOutcomeResolver @Inject constructor() {
                 legsToAutoSkip = emptyList()
             )
         }
-        // Knockout stage: a drawn single match must go to a shootout before it can be resolved.
-        val (pen1, pen2) = penaltiesFor(legs, p1, p2) ?: return null
-        val winner = if (pen1 > pen2) p1 else p2
-        return FixtureOutcome(winner, false, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = true, legsToAutoSkip = emptyList())
+        return null // waiting on the user's tie/penalty decision
     }
 
-    private fun resolveBestOfTwo(legs: List<MatchEntity>, p1: Long, p2: Long): FixtureOutcome? {
+    private fun resolveBestOfTwo(legs: List<MatchEntity>, p1: Long, p2: Long, allowDraw: Boolean): FixtureOutcome? {
         if (legs.size < 2 || legs.any { it.status != "COMPLETED" }) return null
         val (g1, g2) = aggregate(legs, p1, p2)
 
@@ -96,12 +102,19 @@ class FixtureOutcomeResolver @Inject constructor() {
             val winner = if (away1 > away2) p1 else p2
             return FixtureOutcome(winner, false, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = false, legsToAutoSkip = emptyList())
         }
-        val (pen1, pen2) = penaltiesFor(legs, p1, p2) ?: return null // waiting on shootout entry
-        val winner = if (pen1 > pen2) p1 else p2
-        return FixtureOutcome(winner, false, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = true, legsToAutoSkip = emptyList())
+        val pens = penaltiesFor(legs, p1, p2)
+        if (pens != null) {
+            val (pen1, pen2) = pens
+            val winner = if (pen1 > pen2) p1 else p2
+            return FixtureOutcome(winner, false, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = true, legsToAutoSkip = emptyList())
+        }
+        if (allowDraw) {
+            return FixtureOutcome(null, true, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = false, legsToAutoSkip = emptyList())
+        }
+        return null // waiting on the user's tie/penalty decision
     }
 
-    private fun resolveBestOfThree(legs: List<MatchEntity>, p1: Long, p2: Long): FixtureOutcome? {
+    private fun resolveBestOfThree(legs: List<MatchEntity>, p1: Long, p2: Long, allowDraw: Boolean): FixtureOutcome? {
         val sorted = legs.sortedBy { it.leg }
         val completed = sorted.filter { it.status == "COMPLETED" }
         if (completed.size < 2) return null
@@ -145,9 +158,16 @@ class FixtureOutcomeResolver @Inject constructor() {
             val winner = if (away1 > away2) p1 else p2
             return FixtureOutcome(winner, false, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = false, legsToAutoSkip = emptyList())
         }
-        val (pen1, pen2) = penaltiesFor(completed, p1, p2) ?: return null
-        val winner = if (pen1 > pen2) p1 else p2
-        return FixtureOutcome(winner, false, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = true, legsToAutoSkip = emptyList())
+        val pens = penaltiesFor(completed, p1, p2)
+        if (pens != null) {
+            val (pen1, pen2) = pens
+            val winner = if (pen1 > pen2) p1 else p2
+            return FixtureOutcome(winner, false, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = true, legsToAutoSkip = emptyList())
+        }
+        if (allowDraw) {
+            return FixtureOutcome(null, true, mapOf(p1 to g1, p2 to g2), mapOf(p1 to g2, p2 to g1), decidedByPenalties = false, legsToAutoSkip = emptyList())
+        }
+        return null // waiting on the user's tie/penalty decision
     }
 
     private fun decisive(p1: Long, p2: Long, g1: Int, g2: Int, decidedByPenalties: Boolean): FixtureOutcome {

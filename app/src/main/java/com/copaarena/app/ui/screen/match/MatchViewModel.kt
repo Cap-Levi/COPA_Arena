@@ -11,7 +11,6 @@ import com.copaarena.app.data.db.entity.PlayerEntity
 import com.copaarena.app.data.repository.MatchRepository
 import com.copaarena.app.data.repository.StatsRepository
 import com.copaarena.app.data.repository.TournamentRepository
-import com.copaarena.app.domain.model.Stage
 import com.copaarena.app.domain.usecase.ConfirmMatchResultUseCase
 import com.copaarena.app.domain.usecase.FixtureOutcomeResolver
 import com.copaarena.app.domain.usecase.RecordGoalUseCase
@@ -61,6 +60,12 @@ class MatchViewModel @Inject constructor(
 
     private val _fifaPlayersB = MutableStateFlow<List<PlayerDbEntity>>(emptyList())
     val fifaPlayersB: StateFlow<List<PlayerDbEntity>> = _fifaPlayersB.asStateFlow()
+
+    // Two-step tie flow: a level fixture first asks whether penalties were taken
+    // (needsTieDecision) — only once the user says "yes" does needsPenalties flip on to
+    // show the shootout entry. Saying "no" resolves it as a plain draw immediately.
+    private val _needsTieDecision = MutableStateFlow(false)
+    val needsTieDecision: StateFlow<Boolean> = _needsTieDecision.asStateFlow()
 
     private val _needsPenalties = MutableStateFlow(false)
     val needsPenalties: StateFlow<Boolean> = _needsPenalties.asStateFlow()
@@ -130,25 +135,37 @@ class MatchViewModel @Inject constructor(
         _navigateToCeremony.value = null
     }
 
-    /** Confirms this leg. If the fixture still can't be decided afterwards (BO2/BO3 tie, or a
-     * drawn knockout match), [needsPenalties] flips true so the UI can collect a shootout result
-     * and call this again with the penalty counts. */
-    suspend fun confirmMatch(penaltyGoalsA: Int? = null, penaltyGoalsB: Int? = null) {
+    /** User said "yes, penalties were taken" at the tie-decision prompt — reveal the shootout
+     * entry so they can enter the scoreline next. */
+    fun choosePenalties() {
+        _needsTieDecision.value = false
+        _needsPenalties.value = true
+    }
+
+    /** Confirms this leg. If the fixture is still level once every leg is in, [needsTieDecision]
+     * flips true so the UI can ask whether it went to penalties — "no" calls this again with
+     * [acceptDraw] to accept the tie, "yes" reveals [needsPenalties]'s shootout entry which calls
+     * this again with the penalty counts. */
+    suspend fun confirmMatch(penaltyGoalsA: Int? = null, penaltyGoalsB: Int? = null, acceptDraw: Boolean = false) {
         val m = _match.value ?: return
         val g = _goals.value
         val goalsA = g.count { it.creditedToId == m.playerAId }
         val goalsB = g.count { it.creditedToId == m.playerBId }
-        confirmMatchResultUseCase.invoke(matchId, goalsA, goalsB, m.playerAId, m.playerBId, penaltyGoalsA, penaltyGoalsB)
+        confirmMatchResultUseCase.invoke(matchId, goalsA, goalsB, m.playerAId, m.playerBId, penaltyGoalsA, penaltyGoalsB, acceptDraw)
         soundManager.playWhistle()
 
         val refreshed = matchRepository.getMatchByIdOnce(matchId) ?: return
         val tournament = tournamentRepository.getTournamentByIdOnce(refreshed.tournamentId) ?: return
         val legs = matchRepository.getFixtureLegs(refreshed.tournamentId, refreshed.stage, refreshed.matchNumber)
-        val requireDecisive = refreshed.stage != Stage.GROUP.name
-        val outcome = fixtureOutcomeResolver.resolve(legs, tournament.matchesPerFixture, requireDecisive)
-        _needsPenalties.value = outcome == null && legs.isNotEmpty() && legs.all { it.status == "COMPLETED" }
+        val hasPenalties = penaltyGoalsA != null && penaltyGoalsB != null
+        val outcome = fixtureOutcomeResolver.resolve(legs, tournament.matchesPerFixture, allowDraw = acceptDraw || hasPenalties)
+        val allLegsIn = legs.isNotEmpty() && legs.all { it.status == "COMPLETED" }
+        val stillPending = outcome == null && allLegsIn
 
-        if (!_needsPenalties.value) {
+        _needsTieDecision.value = stillPending
+        _needsPenalties.value = false
+
+        if (!stillPending) {
             _celebrateFullTime.value = true
         }
 

@@ -54,6 +54,7 @@ fun MatchScreen(
     val goals by viewModel.goals.collectAsStateWithLifecycle()
     val fifaPlayersA by viewModel.fifaPlayersA.collectAsStateWithLifecycle()
     val fifaPlayersB by viewModel.fifaPlayersB.collectAsStateWithLifecycle()
+    val needsTieDecision by viewModel.needsTieDecision.collectAsStateWithLifecycle()
     val needsPenalties by viewModel.needsPenalties.collectAsStateWithLifecycle()
     val ceremonyTournamentId by viewModel.navigateToCeremony.collectAsStateWithLifecycle()
     val celebrateGoal by viewModel.celebrateGoal.collectAsStateWithLifecycle()
@@ -165,7 +166,17 @@ fun MatchScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // ── Status / Confirm ──
-            if (needsPenalties) {
+            if (needsTieDecision) {
+                TieDecisionPrompt(
+                    onDecline = {
+                        scope.launch {
+                            triggerHaptic()
+                            viewModel.confirmMatch(acceptDraw = true)
+                        }
+                    },
+                    onAccept = { viewModel.choosePenalties() }
+                )
+            } else if (needsPenalties) {
                 PenaltyShootoutEntry(
                     playerAName = pA?.name ?: "Player A",
                     playerBName = pB?.name ?: "Player B",
@@ -475,6 +486,50 @@ fun PlayerMatchCard(player: PlayerEntity?, modifier: Modifier = Modifier) {
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+fun TieDecisionPrompt(
+    onAccept: () -> Unit,
+    onDecline: () -> Unit
+) {
+    CopaCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "MATCH ENDED LEVEL",
+                style = MaterialTheme.typography.titleMedium,
+                color = AccentGold,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                "Was this decided by a penalty shootout?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = OnBackground.copy(alpha = 0.7f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDecline,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("No — Tie", color = OnBackground)
+                }
+                Button(
+                    onClick = onAccept,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentGold)
+                ) {
+                    Text("Yes — Penalties", color = OnPrimary, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }
 

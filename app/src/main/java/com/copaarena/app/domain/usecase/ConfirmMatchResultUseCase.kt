@@ -26,7 +26,8 @@ class ConfirmMatchResultUseCase @Inject constructor(
         playerAId: Long,
         playerBId: Long,
         penaltyGoalsA: Int? = null,
-        penaltyGoalsB: Int? = null
+        penaltyGoalsB: Int? = null,
+        acceptDraw: Boolean = false
     ) {
         val hasPenalties = penaltyGoalsA != null && penaltyGoalsB != null
         val draw = goalsA == goalsB && !hasPenalties
@@ -47,8 +48,10 @@ class ConfirmMatchResultUseCase @Inject constructor(
         val tournament = tournamentRepository.getTournamentByIdOnce(match.tournamentId) ?: return
 
         val legs = matchRepository.getFixtureLegs(match.tournamentId, match.stage, match.matchNumber)
-        val requireDecisive = match.stage != Stage.GROUP.name
-        val outcome = fixtureOutcomeResolver.resolve(legs, tournament.matchesPerFixture, requireDecisive) ?: return
+        // A still-tied fixture only resolves as a plain draw once the user has explicitly said
+        // so (acceptDraw) — otherwise it stays pending so the UI can ask "was this decided by
+        // penalties?" regardless of stage (group or knockout).
+        val outcome = fixtureOutcomeResolver.resolve(legs, tournament.matchesPerFixture, allowDraw = acceptDraw) ?: return
 
         outcome.legsToAutoSkip.forEach { matchRepository.markSkipped(it) }
 
@@ -74,8 +77,12 @@ class ConfirmMatchResultUseCase @Inject constructor(
         val goalsScored = statsRepository.countGoalsForPlayerInMatches(completedLegIds, playerId)
         val ownGoals = statsRepository.countOwnGoalsByPlayerInMatches(completedLegIds, playerId)
         val isWin = outcome.winnerId == playerId
-        val isDraw = outcome.isDraw
-        val isLoss = !isWin && !isDraw
+        // A penalty shootout only decides who advances/tops the table — the 90 minutes were
+        // still level, so it's recorded as a draw with a one-point bonus for the shootout
+        // winner (2/1), not a full win/loss (3/0).
+        val isPenaltyDecider = outcome.decidedByPenalties
+        val isRegulationDraw = outcome.isDraw
+        val isLoss = !isWin && !isRegulationDraw && !isPenaltyDecider
         val gf = outcome.goalsFor[playerId] ?: 0
         val ga = outcome.goalsAgainst[playerId] ?: 0
 
@@ -85,12 +92,18 @@ class ConfirmMatchResultUseCase @Inject constructor(
                 tournamentId = tournamentId,
                 goals = (existing?.goals ?: 0) + goalsScored,
                 ownGoals = (existing?.ownGoals ?: 0) + ownGoals,
-                wins = (existing?.wins ?: 0) + if (isWin) 1 else 0,
-                draws = (existing?.draws ?: 0) + if (isDraw) 1 else 0,
+                wins = (existing?.wins ?: 0) + if (isWin && !isPenaltyDecider) 1 else 0,
+                draws = (existing?.draws ?: 0) + if (isRegulationDraw || isPenaltyDecider) 1 else 0,
                 losses = (existing?.losses ?: 0) + if (isLoss) 1 else 0,
                 goalsFor = (existing?.goalsFor ?: 0) + gf,
                 goalsAgainst = (existing?.goalsAgainst ?: 0) + ga,
-                points = (existing?.points ?: 0) + if (isWin) 3 else if (isDraw) 1 else 0,
+                points = (existing?.points ?: 0) + when {
+                    isPenaltyDecider && isWin -> 2
+                    isPenaltyDecider -> 1
+                    isWin -> 3
+                    isRegulationDraw -> 1
+                    else -> 0
+                },
                 finalPosition = existing?.finalPosition
             )
         )
@@ -136,5 +149,21 @@ class ConfirmMatchResultUseCase @Inject constructor(
         )
         val mvpId = mvp?.playerId ?: winnerId
         tournamentRepository.completeTournament(tournamentId, winnerId, mvpId)
+
+        // finalPosition was last set from the GROUP stage alone (handleGroupFixtureResolved,
+        // before the knockout rounds/final even played) and never revisited since — re-rank now
+        // that every fixture including the final has contributed points. The actual champion is
+        // pinned to rank 1 outright: two separate fixtures (e.g. a group leg + a rematch final)
+        // can legitimately land the runner-up on equal points, but who lifted the trophy isn't a
+        // tiebreak question.
+        val reordered = finalStats.sortedWith(
+            compareByDescending<TournamentStatsEntity> { it.playerId == winnerId }
+                .thenByDescending { it.points }
+                .thenByDescending { it.goalsFor - it.goalsAgainst }
+                .thenByDescending { it.goalsFor }
+        )
+        reordered.forEachIndexed { index, stat ->
+            statsRepository.setFinalPosition(stat.playerId, tournamentId, index + 1)
+        }
     }
 }

@@ -26,7 +26,9 @@ class CalculateStandingsUseCase @Inject constructor(
         val fixtures = fixtureOutcomeResolver.groupLegsIntoFixtures(groupMatches)
 
         fixtures.values.forEach { legs ->
-            val outcome = fixtureOutcomeResolver.resolve(legs, matchesPerFixture) ?: return@forEach
+            // Reading back already-recorded history here, not making a live call — a fixture
+            // stored as a completed draw (accepted tie or otherwise) should always count as one.
+            val outcome = fixtureOutcomeResolver.resolve(legs, matchesPerFixture, allowDraw = true) ?: return@forEach
             val (idA, idB) = outcome.goalsFor.keys.toList()
             val pA = statsMap.getOrPut(idA) { PlayerStats(idA) }
             val pB = statsMap.getOrPut(idB) { PlayerStats(idB) }
@@ -38,6 +40,13 @@ class CalculateStandingsUseCase @Inject constructor(
             pB.goalsAgainst += outcome.goalsAgainst[idB] ?: 0
 
             when {
+                // Penalty shootout: the 90 minutes were level, so it's a draw for both with a
+                // one-point bonus for the shootout winner (2/1), not a full win/loss.
+                outcome.decidedByPenalties -> {
+                    pA.draws++; pB.draws++
+                    if (outcome.winnerId == idA) { pA.points += 2; pB.points += 1 }
+                    else { pB.points += 2; pA.points += 1 }
+                }
                 outcome.isDraw -> {
                     pA.draws++; pA.points += 1
                     pB.draws++; pB.points += 1
@@ -137,7 +146,9 @@ class CalculateStandingsUseCase @Inject constructor(
             val a = first.playerAId
             val b = first.playerBId
             if (a !in ids || b !in ids) return@forEach
-            val outcome = fixtureOutcomeResolver.resolve(legs, matchesPerFixture) ?: return@forEach
+            // Reading back already-recorded history here, not making a live call — a fixture
+            // stored as a completed draw (accepted tie or otherwise) should always count as one.
+            val outcome = fixtureOutcomeResolver.resolve(legs, matchesPerFixture, allowDraw = true) ?: return@forEach
 
             val ga = outcome.goalsFor[a] ?: 0
             val gaAgainst = outcome.goalsAgainst[a] ?: 0
@@ -148,6 +159,10 @@ class CalculateStandingsUseCase @Inject constructor(
             mini[b]?.let { it.gf += gb; it.gd += gb - gbAgainst }
 
             when {
+                outcome.decidedByPenalties -> {
+                    if (outcome.winnerId == a) { mini[a]?.let { it.points += 2 }; mini[b]?.let { it.points += 1 } }
+                    else { mini[b]?.let { it.points += 2 }; mini[a]?.let { it.points += 1 } }
+                }
                 outcome.isDraw -> {
                     mini[a]?.let { it.points += 1 }
                     mini[b]?.let { it.points += 1 }

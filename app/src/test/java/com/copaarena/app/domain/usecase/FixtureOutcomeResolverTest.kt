@@ -42,21 +42,21 @@ class FixtureOutcomeResolverTest {
     }
 
     @Test
-    fun `group stage single leg draw stays a draw`() {
+    fun `accepted single leg draw stays a draw`() {
         val legs = listOf(leg(1, leg = 1, playerA = 10, playerB = 20, goalsA = 1, goalsB = 1, isDraw = true))
-        val outcome = resolver.resolve(legs, matchesPerFixture = 1, requireDecisive = false)!!
+        val outcome = resolver.resolve(legs, matchesPerFixture = 1, allowDraw = true)!!
         assertTrue(outcome.isDraw)
         assertNull(outcome.winnerId)
     }
 
     @Test
-    fun `knockout single leg draw waits for penalties then resolves`() {
+    fun `undecided single leg draw waits for penalties then resolves`() {
         val legs = listOf(leg(1, leg = 1, playerA = 10, playerB = 20, goalsA = 1, goalsB = 1, isDraw = true))
-        val pending = resolver.resolve(legs, matchesPerFixture = 1, requireDecisive = true)
+        val pending = resolver.resolve(legs, matchesPerFixture = 1, allowDraw = false)
         assertNull(pending)
 
         val withPens = listOf(leg(1, leg = 1, playerA = 10, playerB = 20, goalsA = 1, goalsB = 1, isDraw = true, penA = 5, penB = 4))
-        val outcome = resolver.resolve(withPens, matchesPerFixture = 1, requireDecisive = true)!!
+        val outcome = resolver.resolve(withPens, matchesPerFixture = 1, allowDraw = false)!!
         assertEquals(10L, outcome.winnerId)
         assertTrue(outcome.decidedByPenalties)
     }
@@ -92,6 +92,17 @@ class FixtureOutcomeResolverTest {
     }
 
     @Test
+    fun `bo2 accepted draw when tied on away goals too`() {
+        val legs = listOf(
+            leg(1, leg = 1, playerA = 10, playerB = 20, goalsA = 1, goalsB = 1),
+            leg(2, leg = 2, playerA = 20, playerB = 10, goalsA = 1, goalsB = 1)
+        )
+        val outcome = resolver.resolve(legs, matchesPerFixture = 2, allowDraw = true)!!
+        assertTrue(outcome.isDraw)
+        assertNull(outcome.winnerId)
+    }
+
+    @Test
     fun `bo3 two-nil sweep auto-skips the pending third leg`() {
         val legs = listOf(
             leg(1, leg = 1, playerA = 10, playerB = 20, goalsA = 2, goalsB = 0, winnerId = 10),
@@ -117,6 +128,6 @@ class FixtureOutcomeResolverTest {
     @Test
     fun `unseeded knockout stub is not resolvable`() {
         val legs = listOf(leg(1, leg = 1, playerA = -1, playerB = -1, status = "PENDING"))
-        assertNull(resolver.resolve(legs, matchesPerFixture = 1, requireDecisive = true))
+        assertNull(resolver.resolve(legs, matchesPerFixture = 1, allowDraw = false))
     }
 }
