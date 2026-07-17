@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -20,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.copaarena.app.ui.components.CopaCard
 import com.copaarena.app.ui.components.StaggeredEntrance
+import com.copaarena.app.ui.components.TeamBadge
 import com.copaarena.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -81,6 +83,52 @@ fun TournamentDetailScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = if (t.status == "COMPLETED") SuccessColor else AccentGold
                 )
+
+                // Standings' finalPosition ranks by points, which can tie or even disagree
+                // with who actually lifted the trophy (e.g. a knockout final decides the
+                // champion regardless of group-stage points) — winnerId is the ground truth.
+                val champion = t.winnerId?.let { id -> players.find { it.id == id } }
+                if (t.status == "COMPLETED" && champion != null) {
+                    Spacer(modifier = Modifier.height(20.dp))
+                    CopaCard(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.EmojiEvents,
+                                contentDescription = null,
+                                tint = AccentGold,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "CHAMPION",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = AccentGold.copy(alpha = 0.7f)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    champion.name,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = OnBackground
+                                )
+                                Text(
+                                    champion.teamName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = OnBackground.copy(alpha = 0.5f)
+                                )
+                            }
+                            TeamBadge(
+                                badgeUrl = champion.teamBadgeUrl,
+                                teamName = champion.teamName,
+                                size = 40.dp
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
