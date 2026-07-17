@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -44,7 +45,7 @@ fun BracketScreen(
     viewModel: BracketViewModel = hiltViewModel()
 ) {
     val tournament by viewModel.tournament.collectAsStateWithLifecycle()
-    val activeTournaments by viewModel.activeTournaments.collectAsStateWithLifecycle()
+    val allTournaments by viewModel.allTournaments.collectAsStateWithLifecycle()
     val players by viewModel.players.collectAsStateWithLifecycle()
     val matches by viewModel.matches.collectAsStateWithLifecycle()
     val standings by viewModel.standings.collectAsStateWithLifecycle()
@@ -74,8 +75,9 @@ fun BracketScreen(
                 },
                 actions = {
                     ActiveTournamentSwitcher(
-                        activeTournaments = activeTournaments,
+                        activeTournaments = allTournaments,
                         currentTournamentId = tournament?.id,
+                        alwaysShow = true,
                         onSwitch = { id ->
                             navController.navigate(Screen.Bracket.createRoute(id)) {
                                 popUpTo(Screen.Bracket.route) { inclusive = true }
@@ -89,40 +91,72 @@ fun BracketScreen(
         bottomBar = { CopaBottomNavigationBar(navController) },
         containerColor = Background
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Tabs
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = SurfaceVariant,
-                contentColor = OnBackground,
-                indicator = { tabPositions ->
-                    if (selectedTabIndex < tabPositions.size) {
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                            color = AccentGold
-                        )
-                    }
-                }
+        if (tournament == null) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(32.dp),
+                contentAlignment = Alignment.Center
             ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = {
-                            Text(
-                                title,
-                                color = if (selectedTabIndex == index) AccentGold else OnBackground.copy(alpha = 0.5f),
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.EmojiEvents,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = AccentGold.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "NO ACTIVE TOURNAMENT",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = OnBackground
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        if (allTournaments.isNotEmpty())
+                            "Use the switcher above to view an old tournament's bracket and scores"
+                        else
+                            "Start a tournament from Home to see its bracket here",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OnBackground.copy(alpha = 0.5f),
+                        textAlign = TextAlign.Center
                     )
                 }
             }
+        } else {
+            Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                // Tabs
+                TabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = SurfaceVariant,
+                    contentColor = OnBackground,
+                    indicator = { tabPositions ->
+                        if (selectedTabIndex < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
+                                color = AccentGold
+                            )
+                        }
+                    }
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { selectedTabIndex = index },
+                            text = {
+                                Text(
+                                    title,
+                                    color = if (selectedTabIndex == index) AccentGold else OnBackground.copy(alpha = 0.5f),
+                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                    }
+                }
 
-            when (selectedTabIndex) {
-                0 -> MatchesTab(matches, players, skippableMatchIds, nextMatchId, navController) { viewModel.skipMatch(it) }
-                1 -> StandingsTab(standings, players)
-                2 -> TipsTab(tips, players)
+                when (selectedTabIndex) {
+                    0 -> MatchesTab(matches, players, skippableMatchIds, nextMatchId, navController) { viewModel.skipMatch(it) }
+                    1 -> StandingsTab(standings, players)
+                    2 -> TipsTab(tips, players)
+                }
             }
         }
     }

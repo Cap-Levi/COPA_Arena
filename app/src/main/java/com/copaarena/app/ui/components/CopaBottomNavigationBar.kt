@@ -56,7 +56,7 @@ fun CopaBottomNavigationBar(navController: NavController, viewModel: BottomNavVi
 
     val items = listOf(
         BottomNavItem("Home", Icons.Filled.Home, Screen.Home.route),
-        BottomNavItem("Bracket", Icons.Filled.EmojiEvents, "bracket/", matchPrefix = true),
+        BottomNavItem("Bracket", Icons.Filled.EmojiEvents, "bracket", matchPrefix = true),
         BottomNavItem("Stats", Icons.Filled.Leaderboard, "stats", matchPrefix = true),
         BottomNavItem("History", Icons.Filled.History, Screen.History.route)
     )
@@ -80,16 +80,7 @@ fun CopaBottomNavigationBar(navController: NavController, viewModel: BottomNavVi
                             item.route == Screen.Home.route -> navController.navigate(Screen.Home.route) {
                                 popUpTo(Screen.Home.route) { inclusive = true }
                             }
-                            item.route == "bracket/" -> {
-                                val tid = activeTournamentId
-                                if (tid != null) {
-                                    navController.navigate(Screen.Bracket.createRoute(tid))
-                                } else {
-                                    navController.navigate(Screen.Home.route) {
-                                        popUpTo(Screen.Home.route) { inclusive = true }
-                                    }
-                                }
-                            }
+                            item.route == "bracket" -> navController.navigate(Screen.Bracket.createRoute(activeTournamentId))
                             item.route == "stats" -> navController.navigate(Screen.Stats.createRoute(activeTournamentId))
                             else -> navController.navigate(item.route)
                         }

@@ -109,9 +109,13 @@ fun NavGraph(navController: NavHostController) {
         
         composable(
             route = Screen.Bracket.route,
-            arguments = listOf(navArgument("tournamentId") { type = NavType.LongType })
-        ) { 
-            com.copaarena.app.ui.screen.tournament.BracketScreen(navController) 
+            arguments = listOf(navArgument("tournamentId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) {
+            com.copaarena.app.ui.screen.tournament.BracketScreen(navController)
         }
         
         composable(

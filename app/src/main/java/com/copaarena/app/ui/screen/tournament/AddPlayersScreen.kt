@@ -2,6 +2,7 @@ package com.copaarena.app.ui.screen.tournament
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -117,6 +118,9 @@ fun AddPlayersScreen(
                 Button(
                     onClick = {
                         selectedPlayerToEdit = null
+                        selectedTeam = null
+                        viewModel.setSelectedLeagueId(null)
+                        viewModel.setSearchQuery("")
                         showBottomSheet = true
                     },
                     modifier = Modifier
@@ -177,6 +181,9 @@ fun AddPlayersScreen(
                                 if (isRestartMode) {
                                     selectedPlayerToEdit = player
                                     selectedPlayerIndex = index
+                                    selectedTeam = null
+                                    viewModel.setSelectedLeagueId(null)
+                                    viewModel.setSearchQuery("")
                                     showBottomSheet = true
                                 }
                             }
@@ -189,12 +196,7 @@ fun AddPlayersScreen(
 
             Button(
                 onClick = {
-                    if (players.size == 4) {
-                        sharedViewModel.setFormat(com.copaarena.app.domain.model.TournamentFormat.ROUND_ROBIN)
-                        navController.navigate(Screen.BracketPreview.createRoute(0L))
-                    } else {
-                        navController.navigate(Screen.SelectFormat.createRoute(0L))
-                    }
+                    navController.navigate(Screen.SelectFormat.createRoute(0L))
                 },
                 enabled = players.size >= 2,
                 modifier = Modifier
@@ -206,11 +208,7 @@ fun AddPlayersScreen(
                     disabledContainerColor = SurfaceVariant
                 )
             ) {
-                Text(
-                    if (players.size == 4) "Next → Preview Bracket" else "Next → Select Format",
-                    color = OnPrimary,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Next → Select Format", color = OnPrimary, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(8.dp))
         }
@@ -223,6 +221,8 @@ fun AddPlayersScreen(
                     newPlayerName = ""
                     selectedPlayerToEdit = null
                     selectedPlayerIndex = null
+                    selectedTeam = null
+                    viewModel.setSelectedLeagueId(null)
                     viewModel.setSearchQuery("")
                 },
                 sheetState = sheetState,
@@ -276,20 +276,34 @@ fun AddPlayersScreen(
                         onExpandedChange = { expanded = !expanded }
                     ) {
                         val currentLeagueName = popularLeagues.find { it.first == selectedLeagueId }?.second ?: "All Leagues"
-                        OutlinedTextField(
-                            value = currentLeagueName,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("League") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = AccentGold,
-                                unfocusedBorderColor = SurfaceVariant,
-                                focusedLabelColor = AccentGold
+                        Box(modifier = Modifier.menuAnchor().fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = currentLeagueName,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("League") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentGold,
+                                    unfocusedBorderColor = SurfaceVariant,
+                                    focusedLabelColor = AccentGold
+                                )
                             )
-                        )
+                            // A plain readOnly OutlinedTextField still requests focus (and pops
+                            // the soft keyboard) on tap in some Compose/IME combos. A transparent
+                            // click-catcher on top intercepts the touch before the field itself
+                            // ever gets it, so it never focuses.
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { expanded = true }
+                            )
+                        }
                         if (expanded) {
                             Popup(
                                 onDismissRequest = { expanded = false },
@@ -430,6 +444,7 @@ fun AddPlayersScreen(
                                 showBottomSheet = false
                                 selectedPlayerToEdit = null
                                 selectedPlayerIndex = null
+                                viewModel.setSelectedLeagueId(null)
                                 viewModel.setSearchQuery("")
                                 selectedTeam = null
                             } else if (!isRestartMode && newPlayerName.isNotBlank() && selectedTeam != null) {
@@ -446,6 +461,7 @@ fun AddPlayersScreen(
                                 )
                                 showBottomSheet = false
                                 newPlayerName = ""
+                                viewModel.setSelectedLeagueId(null)
                                 viewModel.setSearchQuery("")
                                 selectedTeam = null
                             }

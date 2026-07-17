@@ -15,8 +15,8 @@ sealed class Screen(val route: String) {
     object BracketPreview : Screen("bracket_preview/{tournamentId}") {
         fun createRoute(tournamentId: Long) = "bracket_preview/$tournamentId"
     }
-    object Bracket : Screen("bracket/{tournamentId}") {
-        fun createRoute(tournamentId: Long) = "bracket/$tournamentId"
+    object Bracket : Screen("bracket?tournamentId={tournamentId}") {
+        fun createRoute(tournamentId: Long?) = tournamentId?.let { "bracket?tournamentId=$it" } ?: "bracket"
     }
     object Match : Screen("match/{matchId}") {
         fun createRoute(matchId: Long) = "match/$matchId"
