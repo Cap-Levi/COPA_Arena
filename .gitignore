@@ -1,0 +1,25 @@
+*.iml
+.gradle/
+.idea/
+.kotlin/
+/local.properties
+/.superpowers/
+/.claude/
+.DS_Store
+build/
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.hprof
+
+# Signing — never commit the actual keystore or its passwords
+*.jks
+*.keystore
+keystore.properties
+
+# Scratch / staging material not part of the app
+/fut-api-temp/
+/asset_test/
+logcat_dump.txt

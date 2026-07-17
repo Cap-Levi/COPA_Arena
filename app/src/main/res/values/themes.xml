@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Set the splash screen background -->
+        <item name="windowSplashScreenBackground">@color/background</item>
+        <!-- Use windowSplashScreenAnimatedIcon to add a custom splash icon -->
+        <!-- <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item> -->
+        <!-- Set the post-splash theme -->
+        <item name="postSplashScreenTheme">@style/Theme.COPAArena</item>
+    </style>
+
+    <style name="Theme.COPAArena" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+    </style>
+</resources>

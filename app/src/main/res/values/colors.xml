@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#0D1B2A</color>
+    <color name="primary_variant">#142233</color>
+    <color name="secondary">#3B6D11</color>
+    <color name="secondary_variant">#2E5A0D</color>
+    <color name="accent_gold">#EF9F27</color>
+    <color name="accent_dark">#BA7517</color>
+    <color name="surface">#111D2B</color>
+    <color name="surface_variant">#1A2B3C</color>
+    <color name="background">#0A1520</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_secondary">#FFFFFF</color>
+    <color name="on_background">#E8EDF2</color>
+    <color name="error">#E24B4A</color>
+    <color name="success">#3B6D11</color>
+    <color name="warning">#EF9F27</color>
+    <!-- Sampled directly from app_logo.png's own background so the adaptive-icon mask edge is seamless -->
+    <color name="ic_launcher_background">#031533</color>
+    <!-- We'll use Compose for the Card Border rgba color -->
+</resources>
