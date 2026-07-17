@@ -76,15 +76,15 @@ val AppTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = BebasNeue,
         fontWeight = FontWeight.Normal,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
         letterSpacing = 1.sp
     ),
     headlineMedium = TextStyle(
         fontFamily = BebasNeue,
         fontWeight = FontWeight.Normal,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.5.sp
     ),
     headlineSmall = TextStyle(

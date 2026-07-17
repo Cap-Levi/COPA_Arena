@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -64,7 +65,9 @@ fun TournamentDetailScreen(
 
                 Text(
                     t.name,
-                    style = MaterialTheme.typography.headlineLarge,
+                    // Page hero title, not a navbar header — kept at the old headlineLarge
+                    // size explicitly so shrinking navbar headers doesn't shrink this too.
+                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp, lineHeight = 40.sp),
                     color = AccentGold
                 )
                 Text(
