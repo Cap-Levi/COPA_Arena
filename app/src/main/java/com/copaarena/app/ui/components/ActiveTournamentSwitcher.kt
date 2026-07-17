@@ -33,26 +33,20 @@ import com.copaarena.app.ui.theme.OnBackground
 import com.copaarena.app.ui.theme.SurfaceVariant
 
 /**
- * Lets the user hop between tournaments from a screen's top bar. Callers decide the pool
- * (Bracket passes ACTIVE-only, since that's what's playable; Stats passes every tournament
- * — active or completed — since past-tournament stats are exactly what this is for).
- *
- * @param alwaysShow if true, renders even with a single tournament (Stats: still useful as
- * an entry point into "which tournament am I looking at"); if false (Bracket's default use),
- * hides entirely below 2 — switching only matters once there's a real choice to make.
+ * Lets the user hop between tournaments from a screen's top bar. Always visible — even with
+ * zero tournaments, it shows a "No tournaments" placeholder rather than disappearing, so the
+ * switcher is a stable fixture of the Bracket/Stats top bars regardless of data state.
  */
 @Composable
 fun ActiveTournamentSwitcher(
     activeTournaments: List<TournamentEntity>,
     currentTournamentId: Long?,
-    onSwitch: (Long) -> Unit,
-    alwaysShow: Boolean = false
+    onSwitch: (Long) -> Unit
 ) {
-    if (activeTournaments.isEmpty()) return
-    if (!alwaysShow && activeTournaments.size <= 1) return
     val canSwitch = activeTournaments.size > 1
     var expanded by remember { mutableStateOf(false) }
     val current = activeTournaments.find { it.id == currentTournamentId }
+    val label = current?.name ?: if (activeTournaments.isEmpty()) "No tournaments" else "Switch"
 
     Box {
         Row(
@@ -64,7 +58,7 @@ fun ActiveTournamentSwitcher(
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
             Text(
-                current?.name ?: "Switch",
+                label,
                 style = MaterialTheme.typography.labelMedium,
                 color = AccentGold,
                 maxLines = 1,

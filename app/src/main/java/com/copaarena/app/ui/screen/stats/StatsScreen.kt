@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -19,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,7 +66,6 @@ fun StatsScreen(navController: NavController, viewModel: StatsViewModel = hiltVi
                     ActiveTournamentSwitcher(
                         activeTournaments = allTournaments,
                         currentTournamentId = viewModel.tournamentId,
-                        alwaysShow = true,
                         onSwitch = { id ->
                             navController.navigate(Screen.Stats.createRoute(id)) {
                                 popUpTo(Screen.Stats.route) { inclusive = true }
@@ -107,7 +109,9 @@ fun StatsScreen(navController: NavController, viewModel: StatsViewModel = hiltVi
             }
 
             when (selectedTabIndex) {
-                0 -> {
+                0 -> if (topScorers.isEmpty() && players.isEmpty()) {
+                    StatsEmptyState("No stats available", "Play a match in this tournament to see stats here")
+                } else {
                     val goalsByPlayerId = remember(playerGoalCounts) { playerGoalCounts.associate { it.playerId to it.goals } }
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                         item {
@@ -193,7 +197,9 @@ fun StatsScreen(navController: NavController, viewModel: StatsViewModel = hiltVi
                     }
                 }
 
-                1 -> {
+                1 -> if (globalStats.isEmpty()) {
+                    StatsEmptyState("No stats available", "Play some matches to build the all-time leaderboard")
+                } else {
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
                         item {
                             Text(
@@ -310,6 +316,37 @@ fun StatsScreen(navController: NavController, viewModel: StatsViewModel = hiltVi
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StatsEmptyState(
+    title: String = "No stats available",
+    subtitle: String = "Play a match to see stats here"
+) {
+    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.BarChart,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = AccentGold.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                title.uppercase(),
+                style = MaterialTheme.typography.headlineSmall,
+                color = OnBackground,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = OnBackground.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

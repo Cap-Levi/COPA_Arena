@@ -77,7 +77,6 @@ fun BracketScreen(
                     ActiveTournamentSwitcher(
                         activeTournaments = allTournaments,
                         currentTournamentId = tournament?.id,
-                        alwaysShow = true,
                         onSwitch = { id ->
                             navController.navigate(Screen.Bracket.createRoute(id)) {
                                 popUpTo(Screen.Bracket.route) { inclusive = true }
@@ -107,7 +106,8 @@ fun BracketScreen(
                     Text(
                         "NO ACTIVE TOURNAMENT",
                         style = MaterialTheme.typography.headlineSmall,
-                        color = OnBackground
+                        color = OnBackground,
+                        textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
