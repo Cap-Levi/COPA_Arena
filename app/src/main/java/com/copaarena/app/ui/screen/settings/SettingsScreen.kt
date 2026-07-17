@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.copaarena.app.BuildConfig
 import com.copaarena.app.ui.components.CopaCard
 import com.copaarena.app.ui.theme.*
 
@@ -30,6 +31,7 @@ fun SettingsScreen(
     val hapticEnabled by viewModel.hapticEnabled.collectAsStateWithLifecycle()
     val themePreference by viewModel.themePreference.collectAsStateWithLifecycle()
     val dataSize by viewModel.dataSize.collectAsStateWithLifecycle()
+    val updateCheckState by viewModel.updateCheckState.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -174,7 +176,11 @@ fun SettingsScreen(
                 CopaCard {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("COPA Arena", fontWeight = FontWeight.Bold, color = OnBackground)
-                        Text("Version 1.0.0", style = MaterialTheme.typography.bodySmall, color = OnBackground.copy(alpha = 0.4f))
+                        Text(
+                            "Version ${BuildConfig.VERSION_NAME}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OnBackground.copy(alpha = 0.4f)
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("Built with ❤️ for FIFA couch gaming", color = OnBackground.copy(alpha = 0.5f))
                         Spacer(modifier = Modifier.height(4.dp))
@@ -183,8 +189,61 @@ fun SettingsScreen(
                         Text(
                             "View on GitHub",
                             color = AccentGold,
-                            modifier = Modifier.clickable { uriHandler.openUri("https://github.com") }
+                            modifier = Modifier.clickable { uriHandler.openUri("https://github.com/Cap-Levi/COPA_Arena") }
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        HorizontalDivider(color = SurfaceVariant)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Check for Updates",
+                                color = AccentGold,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clickable(
+                                    enabled = updateCheckState !is UpdateCheckState.Checking
+                                ) { viewModel.checkForUpdates() }
+                            )
+                            if (updateCheckState is UpdateCheckState.Checking) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = AccentGold,
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        }
+                        when (val state = updateCheckState) {
+                            is UpdateCheckState.UpToDate -> {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    "You're on the latest version",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = SuccessColor
+                                )
+                            }
+                            is UpdateCheckState.UpdateAvailable -> {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    "Update available: v${state.version}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = AccentGold,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable { uriHandler.openUri(state.url) }
+                                )
+                            }
+                            is UpdateCheckState.Error -> {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    state.message,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ErrorColor
+                                )
+                            }
+                            else -> {}
+                        }
                     }
                 }
             }

@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.copaarena.app.data.datastore.SettingsDataStore
 import com.copaarena.app.data.db.AppDatabase
 import com.copaarena.app.data.repository.TournamentRepository
+import com.copaarena.app.data.repository.UpdateCheckResult
+import com.copaarena.app.data.repository.UpdateRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +25,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsDataStore: SettingsDataStore,
     private val tournamentRepository: TournamentRepository,
     private val appDatabase: AppDatabase,
+    private val updateRepository: UpdateRepository,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
     val soundEnabled: StateFlow<Boolean> = settingsDataStore.soundEnabledFlow
@@ -37,8 +40,23 @@ class SettingsViewModel @Inject constructor(
     private val _dataSize = MutableStateFlow("0 KB")
     val dataSize: StateFlow<String> = _dataSize.asStateFlow()
 
+    private val _updateCheckState = MutableStateFlow<UpdateCheckState>(UpdateCheckState.Idle)
+    val updateCheckState: StateFlow<UpdateCheckState> = _updateCheckState.asStateFlow()
+
     init {
         refreshDataSize()
+    }
+
+    fun checkForUpdates() {
+        viewModelScope.launch {
+            _updateCheckState.value = UpdateCheckState.Checking
+            _updateCheckState.value = when (val result = updateRepository.checkForUpdate()) {
+                is UpdateCheckResult.UpdateAvailable ->
+                    UpdateCheckState.UpdateAvailable(result.latestVersion, result.releaseUrl)
+                is UpdateCheckResult.UpToDate -> UpdateCheckState.UpToDate
+                is UpdateCheckResult.Error -> UpdateCheckState.Error(result.message)
+            }
+        }
     }
 
     fun toggleSound(enabled: Boolean) {
@@ -85,4 +103,12 @@ class SettingsViewModel @Inject constructor(
         val gb = mb / 1024.0
         return "%.1f GB".format(gb)
     }
+}
+
+sealed class UpdateCheckState {
+    object Idle : UpdateCheckState()
+    object Checking : UpdateCheckState()
+    object UpToDate : UpdateCheckState()
+    data class UpdateAvailable(val version: String, val url: String) : UpdateCheckState()
+    data class Error(val message: String) : UpdateCheckState()
 }
