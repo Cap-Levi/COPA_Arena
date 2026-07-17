@@ -7,6 +7,7 @@ import com.copaarena.app.data.db.dao.GlobalPlayerSummary
 import com.copaarena.app.data.db.dao.PlayerGoalCount
 import com.copaarena.app.data.db.dao.PlayerMatchGoal
 import com.copaarena.app.data.db.dao.TopScorerResult
+import com.copaarena.app.data.db.dao.TournamentWinsSummary
 import com.copaarena.app.data.db.entity.MatchEntity
 import com.copaarena.app.data.db.entity.PlayerEntity
 import com.copaarena.app.data.db.entity.TournamentEntity
@@ -41,6 +42,15 @@ class StatsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val globalStats: StateFlow<List<GlobalPlayerSummary>> = statsRepository.getGlobalStats()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // All Time tab's own top scorers — always the real all-tournament leaderboard
+    // (getTopScorers(null)) regardless of which specific tournament this screen instance
+    // is scoped to, unlike [topScorers] above which follows the current tournamentId.
+    val globalTopScorers: StateFlow<List<TopScorerResult>> = statsRepository.getTopScorers(null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val tournamentWins: StateFlow<List<TournamentWinsSummary>> = tournamentRepository.getTournamentWinsSummary()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Only meaningful for the "This Tournament" tab — a player's team is fixed for one

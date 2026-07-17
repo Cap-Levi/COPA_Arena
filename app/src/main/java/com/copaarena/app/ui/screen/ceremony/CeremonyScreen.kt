@@ -5,13 +5,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -110,7 +108,6 @@ fun CeremonyScreen(
                 TeamBadge(
                     badgeUrl = champion?.teamBadgeUrl,
                     teamName = champion?.teamName ?: champion?.name ?: "",
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(OnPrimary),
                     size = 128.dp
                 )
             }

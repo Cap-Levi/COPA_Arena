@@ -16,6 +16,9 @@ interface FifaDao {
     @Query("SELECT * FROM clubs WHERE league_id = :leagueId ORDER BY club_name ASC")
     suspend fun getClubsByLeague(leagueId: Int): List<ClubDbEntity>
 
+    @Query("SELECT * FROM clubs WHERE club_team_id = :clubTeamId LIMIT 1")
+    suspend fun getClubById(clubTeamId: Int): ClubDbEntity?
+
     @Query("SELECT * FROM clubs WHERE club_name LIKE '%' || :query || '%' ORDER BY club_name ASC LIMIT 50")
     suspend fun searchClubs(query: String): List<ClubDbEntity>
 

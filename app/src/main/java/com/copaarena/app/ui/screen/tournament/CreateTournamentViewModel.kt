@@ -53,6 +53,16 @@ class CreateTournamentViewModel @Inject constructor(
         }
     }
 
+    /** Edits a not-yet-created player's name and team together (the pre-kickoff "Add Players"
+     *  screen lets you tap an existing card to fix a typo or swap teams before the tournament
+     *  is actually created — distinct from [updatePlayerTeamAt], which is the post-tournament
+     *  "restart with new teams" flow that deliberately keeps names fixed). */
+    fun updatePlayerAt(index: Int, newName: String, newTeamName: String, newBadgeUrl: String, newOverall: Int, newTeamId: Int) {
+        _players.value = _players.value.mapIndexed { i, p ->
+            if (i == index) p.copy(name = newName, teamName = newTeamName, teamBadgeUrl = newBadgeUrl, teamOverall = newOverall, teamId = newTeamId) else p
+        }
+    }
+
     fun loadPlayersForRestart(oldTournamentId: Long) {
         _isRestartMode.value = true
         viewModelScope.launch {

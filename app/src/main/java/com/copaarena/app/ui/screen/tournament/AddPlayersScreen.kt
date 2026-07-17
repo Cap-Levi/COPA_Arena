@@ -118,6 +118,8 @@ fun AddPlayersScreen(
                 Button(
                     onClick = {
                         selectedPlayerToEdit = null
+                        selectedPlayerIndex = null
+                        newPlayerName = ""
                         selectedTeam = null
                         viewModel.setSelectedLeagueId(null)
                         viewModel.setSearchQuery("")
@@ -178,14 +180,13 @@ fun AddPlayersScreen(
                             isRestartMode = isRestartMode,
                             onRemove = { sharedViewModel.removePlayer(player) },
                             onClick = {
-                                if (isRestartMode) {
-                                    selectedPlayerToEdit = player
-                                    selectedPlayerIndex = index
-                                    selectedTeam = null
-                                    viewModel.setSelectedLeagueId(null)
-                                    viewModel.setSearchQuery("")
-                                    showBottomSheet = true
-                                }
+                                selectedPlayerToEdit = player
+                                selectedPlayerIndex = index
+                                newPlayerName = if (!isRestartMode) player.name else ""
+                                selectedTeam = null
+                                viewModel.setSelectedLeagueId(null)
+                                viewModel.setSearchQuery("")
+                                showBottomSheet = true
                             }
                         )
                     }
@@ -230,7 +231,11 @@ fun AddPlayersScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp).fillMaxHeight(0.8f)) {
                     Text(
-                        if (isRestartMode) "CHANGE TEAM" else "ADD NEW PLAYER",
+                        when {
+                            isRestartMode -> "CHANGE TEAM"
+                            selectedPlayerIndex != null -> "EDIT PLAYER"
+                            else -> "ADD NEW PLAYER"
+                        },
                         style = MaterialTheme.typography.headlineSmall,
                         color = AccentGold
                     )
@@ -333,7 +338,12 @@ fun AddPlayersScreen(
                                                     }
                                                 },
                                                 onClick = {
+                                                    // Only a genuine user-picked league change should
+                                                    // clear the team — a programmatic prefill (editing
+                                                    // an existing player) sets league+team together and
+                                                    // must NOT have this wipe the team right back out.
                                                     viewModel.setSelectedLeagueId(id)
+                                                    selectedTeam = null
                                                     expanded = false
                                                 }
                                             )
@@ -345,11 +355,15 @@ fun AddPlayersScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // A league must be picked before a team can be — a player can't be
-                    // assigned a team with no valid league behind it.
-                    LaunchedEffect(selectedLeagueId) {
-                        selectedTeam = null
-                        viewModel.setSearchQuery("")
+                    // Editing an existing (not-yet-created) player: load their current
+                    // league+team so the form isn't blank.
+                    LaunchedEffect(selectedPlayerToEdit) {
+                        val editing = selectedPlayerToEdit
+                        if (editing != null && !isRestartMode) {
+                            viewModel.prefillForEdit(editing.teamId) { team ->
+                                selectedTeam = team
+                            }
+                        }
                     }
 
                     if (selectedLeagueId != null) {
@@ -359,61 +373,91 @@ fun AddPlayersScreen(
                             expanded = teamExpanded,
                             onExpandedChange = { teamExpanded = !teamExpanded }
                         ) {
-                            OutlinedTextField(
-                                value = selectedTeam?.name ?: searchQuery,
-                                onValueChange = {
-                                    viewModel.setSearchQuery(it)
-                                    selectedTeam = null
-                                },
-                                label = { Text("Select Team") },
-                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = teamExpanded) },
-                                shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = AccentGold,
-                                    unfocusedBorderColor = SurfaceVariant,
-                                    focusedLabelColor = AccentGold
+                            Box(modifier = Modifier.menuAnchor().fillMaxWidth()) {
+                                // readOnly display only — like the League field, this is a pure
+                                // selector. Typing to filter happens in a dedicated search box
+                                // inside the opened list below, not on the anchor itself, so
+                                // re-tapping an already-picked team reopens the picker instead of
+                                // dropping you into text-edit mode on the current selection.
+                                OutlinedTextField(
+                                    value = selectedTeam?.name ?: "Select Team",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Select Team") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = teamExpanded) },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = AccentGold,
+                                        unfocusedBorderColor = SurfaceVariant,
+                                        focusedLabelColor = AccentGold
+                                    )
                                 )
-                            )
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) { teamExpanded = true }
+                                )
+                            }
 
-                            if (teamExpanded && searchResults.isNotEmpty()) {
+                            if (teamExpanded) {
                                 Popup(
                                     onDismissRequest = { teamExpanded = false },
                                     properties = PopupProperties(focusable = true)
                                 ) {
                                     Surface(
-                                        modifier = Modifier.exposedDropdownSize().heightIn(max = 320.dp),
+                                        modifier = Modifier.exposedDropdownSize().heightIn(max = 380.dp),
                                         shadowElevation = 3.dp,
                                         tonalElevation = 3.dp,
                                         shape = MaterialTheme.shapes.extraSmall,
                                         color = MaterialTheme.colorScheme.surfaceContainer
                                     ) {
-                                        if (isLoading) {
-                                            DropdownMenuItem(
-                                                text = { Text("Loading teams…") },
-                                                onClick = {}
+                                        Column {
+                                            OutlinedTextField(
+                                                value = searchQuery,
+                                                onValueChange = { viewModel.setSearchQuery(it) },
+                                                placeholder = { Text("Search teams…") },
+                                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                                singleLine = true,
+                                                shape = RoundedCornerShape(12.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = AccentGold,
+                                                    unfocusedBorderColor = SurfaceVariant,
+                                                    cursorColor = AccentGold
+                                                )
                                             )
-                                        } else {
-                                            LazyColumn {
-                                                items(searchResults, key = { it.teamId }) { team ->
-                                                    DropdownMenuItem(
-                                                        text = {
-                                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                                TeamBadge(
-                                                                    badgeUrl = team.badgeUrl,
-                                                                    teamName = team.name,
-                                                                    size = 28.dp
-                                                                )
-                                                                Spacer(modifier = Modifier.width(10.dp))
-                                                                Text(team.name, fontWeight = FontWeight.Bold)
+                                            when {
+                                                isLoading -> DropdownMenuItem(
+                                                    text = { Text("Loading teams…") },
+                                                    onClick = {}
+                                                )
+                                                searchResults.isEmpty() -> DropdownMenuItem(
+                                                    text = { Text("No teams found") },
+                                                    onClick = {}
+                                                )
+                                                else -> LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+                                                    items(searchResults, key = { it.teamId }) { team ->
+                                                        DropdownMenuItem(
+                                                            text = {
+                                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                    TeamBadge(
+                                                                        badgeUrl = team.badgeUrl,
+                                                                        teamName = team.name,
+                                                                        size = 28.dp
+                                                                    )
+                                                                    Spacer(modifier = Modifier.width(10.dp))
+                                                                    Text(team.name, fontWeight = FontWeight.Bold)
+                                                                }
+                                                            },
+                                                            onClick = {
+                                                                selectedTeam = team
+                                                                teamExpanded = false
                                                             }
-                                                        },
-                                                        onClick = {
-                                                            selectedTeam = team
-                                                            viewModel.setSearchQuery(team.name)
-                                                            teamExpanded = false
-                                                        }
-                                                    )
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
@@ -448,19 +492,32 @@ fun AddPlayersScreen(
                                 viewModel.setSearchQuery("")
                                 selectedTeam = null
                             } else if (!isRestartMode && newPlayerName.isNotBlank() && selectedTeam != null) {
-                                sharedViewModel.addPlayer(
-                                    PlayerEntity(
-                                        tournamentId = 0L,
-                                        name = newPlayerName,
-                                        teamName = selectedTeam!!.name,
-                                        teamId = selectedTeam!!.teamId,
-                                        teamBadgeUrl = selectedTeam!!.badgeUrl,
-                                        teamOverall = selectedTeam!!.overall,
-                                        seed = 0
+                                if (selectedPlayerIndex != null) {
+                                    sharedViewModel.updatePlayerAt(
+                                        index = selectedPlayerIndex!!,
+                                        newName = newPlayerName,
+                                        newTeamName = selectedTeam!!.name,
+                                        newBadgeUrl = selectedTeam!!.badgeUrl,
+                                        newOverall = selectedTeam!!.overall,
+                                        newTeamId = selectedTeam!!.teamId
                                     )
-                                )
+                                } else {
+                                    sharedViewModel.addPlayer(
+                                        PlayerEntity(
+                                            tournamentId = 0L,
+                                            name = newPlayerName,
+                                            teamName = selectedTeam!!.name,
+                                            teamId = selectedTeam!!.teamId,
+                                            teamBadgeUrl = selectedTeam!!.badgeUrl,
+                                            teamOverall = selectedTeam!!.overall,
+                                            seed = 0
+                                        )
+                                    )
+                                }
                                 showBottomSheet = false
                                 newPlayerName = ""
+                                selectedPlayerToEdit = null
+                                selectedPlayerIndex = null
                                 viewModel.setSelectedLeagueId(null)
                                 viewModel.setSearchQuery("")
                                 selectedTeam = null
@@ -477,7 +534,11 @@ fun AddPlayersScreen(
                         )
                     ) {
                         Text(
-                            if (isRestartMode) "Update Team" else "Add Player",
+                            when {
+                                isRestartMode -> "Update Team"
+                                selectedPlayerIndex != null -> "Save Changes"
+                                else -> "Add Player"
+                            },
                             color = OnPrimary,
                             fontWeight = FontWeight.Bold
                         )
@@ -492,7 +553,7 @@ fun AddPlayersScreen(
 fun PlayerCard(player: PlayerEntity, isRestartMode: Boolean, onRemove: () -> Unit, onClick: () -> Unit) {
     CopaCard(
         modifier = Modifier.fillMaxWidth(),
-        onClick = if (isRestartMode) onClick else null
+        onClick = onClick
     ) {
         Column(
             modifier = Modifier.padding(12.dp).fillMaxWidth(),

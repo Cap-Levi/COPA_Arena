@@ -41,9 +41,20 @@ class TeamRepository @Inject constructor(
         }
     }
 
+    /** Looks up a single club by id — used to pre-fill the league/team pickers when editing
+     *  a player who was already assigned a team (e.g. reopening their Add Players card). */
     suspend fun getTeamById(id: Int): CachedTeamEntity? {
-        val clubs = fifaDao.searchClubs("")
-        return null // Unused mostly
+        val club = fifaDao.getClubById(id) ?: return null
+        val leagueName = club.leagueId?.let { fifaDao.getLeagueById(it)?.leagueName ?: "League $it" } ?: "Unknown League"
+        return CachedTeamEntity(
+            teamId = club.clubTeamId,
+            name = club.clubName ?: "Unknown",
+            badgeUrl = teamBadgeAssetUri(club.clubTeamId),
+            overall = 80,
+            league = leagueName,
+            leagueId = club.leagueId,
+            nation = "Unknown"
+        )
     }
 
     companion object {

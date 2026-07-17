@@ -8,6 +8,13 @@ import androidx.room.Update
 import com.copaarena.app.data.db.entity.TournamentEntity
 import kotlinx.coroutines.flow.Flow
 
+data class TournamentWinsSummary(
+    val playerName: String,
+    val tournamentsWon: Int,
+    val lastTeamName: String?,
+    val lastTeamBadgeUrl: String?
+)
+
 @Dao
 interface TournamentDao {
     @Insert
@@ -42,4 +49,26 @@ interface TournamentDao {
 
     @Query("DELETE FROM tournaments")
     suspend fun deleteAll()
+
+    // Grouped by player name (not id) — same reasoning as StatsDao.getGlobalPlayerSummary:
+    // a winner's own PlayerEntity id/team is fixed per-tournament, so counting/aggregating
+    // "how many times has this person won overall" has to key on their name across rows.
+    @Query("""
+        SELECT p.name as playerName,
+               COUNT(*) as tournamentsWon,
+               (SELECT p2.teamName FROM tournaments t2
+                INNER JOIN players p2 ON t2.winnerId = p2.id
+                WHERE p2.name = p.name AND t2.status = 'COMPLETED'
+                ORDER BY t2.createdAt DESC LIMIT 1) as lastTeamName,
+               (SELECT p3.teamBadgeUrl FROM tournaments t3
+                INNER JOIN players p3 ON t3.winnerId = p3.id
+                WHERE p3.name = p.name AND t3.status = 'COMPLETED'
+                ORDER BY t3.createdAt DESC LIMIT 1) as lastTeamBadgeUrl
+        FROM tournaments t
+        INNER JOIN players p ON t.winnerId = p.id
+        WHERE t.status = 'COMPLETED'
+        GROUP BY p.name
+        ORDER BY tournamentsWon DESC
+    """)
+    fun getTournamentWinsSummary(): Flow<List<TournamentWinsSummary>>
 }

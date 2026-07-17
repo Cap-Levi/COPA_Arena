@@ -7,7 +7,14 @@ import androidx.room.Query
 import com.copaarena.app.data.db.entity.TournamentStatsEntity
 import kotlinx.coroutines.flow.Flow
 
-data class GlobalPlayerSummary(val playerName: String, val totalWins: Int, val totalMatches: Int, val totalPoints: Int)
+data class GlobalPlayerSummary(
+    val playerName: String,
+    val totalWins: Int,
+    val totalMatches: Int,
+    val totalPoints: Int,
+    val lastTeamName: String?,
+    val lastTeamBadgeUrl: String?
+)
 
 @Dao
 interface StatsDao {
@@ -29,6 +36,25 @@ interface StatsDao {
     @Query("UPDATE tournament_stats SET finalPosition = :position WHERE playerId = :pid AND tournamentId = :tid")
     suspend fun setFinalPosition(pid: Long, tid: Long, position: Int)
     
-    @Query("SELECT p.name as playerName, SUM(s.wins) as totalWins, SUM(s.wins + s.draws + s.losses) as totalMatches, SUM(s.points) as totalPoints FROM tournament_stats s INNER JOIN players p ON s.playerId = p.id GROUP BY p.name ORDER BY totalPoints DESC")
+    // lastTeamName/lastTeamBadgeUrl are correlated subqueries picking the player's most
+    // recent tournament appearance (by tournamentId) — a player's team is fixed per
+    // tournament but changes across tournaments, so "their team" for an all-time
+    // leaderboard row means "the one they're using most recently," not a single fixed value.
+    @Query("""
+        SELECT p.name as playerName,
+               SUM(s.wins) as totalWins,
+               SUM(s.wins + s.draws + s.losses) as totalMatches,
+               SUM(s.points) as totalPoints,
+               (SELECT p2.teamName FROM tournament_stats s2
+                INNER JOIN players p2 ON s2.playerId = p2.id
+                WHERE p2.name = p.name ORDER BY s2.tournamentId DESC LIMIT 1) as lastTeamName,
+               (SELECT p3.teamBadgeUrl FROM tournament_stats s3
+                INNER JOIN players p3 ON s3.playerId = p3.id
+                WHERE p3.name = p.name ORDER BY s3.tournamentId DESC LIMIT 1) as lastTeamBadgeUrl
+        FROM tournament_stats s
+        INNER JOIN players p ON s.playerId = p.id
+        GROUP BY p.name
+        ORDER BY totalPoints DESC
+    """)
     fun getGlobalPlayerSummary(): Flow<List<GlobalPlayerSummary>>
 }

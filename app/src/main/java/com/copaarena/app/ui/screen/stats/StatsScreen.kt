@@ -35,6 +35,7 @@ import com.copaarena.app.ui.components.ActiveTournamentSwitcher
 import com.copaarena.app.ui.components.CopaBottomNavigationBar
 import com.copaarena.app.ui.components.CopaCard
 import com.copaarena.app.ui.components.StaggeredEntrance
+import com.copaarena.app.ui.components.TeamBadge
 import com.copaarena.app.ui.navigation.Screen
 import com.copaarena.app.ui.theme.*
 
@@ -43,6 +44,8 @@ import com.copaarena.app.ui.theme.*
 fun StatsScreen(navController: NavController, viewModel: StatsViewModel = hiltViewModel()) {
     val topScorers by viewModel.topScorers.collectAsStateWithLifecycle()
     val globalStats by viewModel.globalStats.collectAsStateWithLifecycle()
+    val globalTopScorers by viewModel.globalTopScorers.collectAsStateWithLifecycle()
+    val tournamentWins by viewModel.tournamentWins.collectAsStateWithLifecycle()
     val players by viewModel.players.collectAsStateWithLifecycle()
     val matches by viewModel.matches.collectAsStateWithLifecycle()
     val playerGoalCounts by viewModel.playerGoalCounts.collectAsStateWithLifecycle()
@@ -197,11 +200,151 @@ fun StatsScreen(navController: NavController, viewModel: StatsViewModel = hiltVi
                     }
                 }
 
-                1 -> if (globalStats.isEmpty()) {
+                1 -> if (globalStats.isEmpty() && globalTopScorers.isEmpty()) {
                     StatsEmptyState("No stats available", "Play some matches to build the all-time leaderboard")
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                        if (tournamentWins.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "TOURNAMENTS WON",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = AccentGold,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                            }
+                            item {
+                                Column(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(SurfaceVariant, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
+                                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            "Player",
+                                            modifier = Modifier.weight(1f),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = AccentGold
+                                        )
+                                        Text(
+                                            "Team",
+                                            modifier = Modifier.weight(1f),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = AccentGold
+                                        )
+                                        Text(
+                                            "Won",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = AccentGold,
+                                            textAlign = TextAlign.End,
+                                            modifier = Modifier.width(48.dp)
+                                        )
+                                    }
+                                    tournamentWins.forEachIndexed { index, win ->
+                                        val isLast = index == tournamentWins.size - 1
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .background(
+                                                    if (index % 2 == 0) Surface else Color.Transparent,
+                                                    if (isLast) RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp) else RoundedCornerShape(0.dp)
+                                                )
+                                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                win.playerName,
+                                                modifier = Modifier.weight(1f),
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp,
+                                                color = OnBackground,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                                if (win.lastTeamName != null) {
+                                                    TeamBadge(badgeUrl = win.lastTeamBadgeUrl, teamName = win.lastTeamName, size = 22.dp)
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(
+                                                        win.lastTeamName,
+                                                        fontSize = 12.sp,
+                                                        color = OnBackground.copy(alpha = 0.6f),
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
+                                                    )
+                                                } else {
+                                                    Text("—", fontSize = 12.sp, color = OnBackground.copy(alpha = 0.3f))
+                                                }
+                                            }
+                                            Text(
+                                                "${win.tournamentsWon}",
+                                                fontFamily = JetBrainsMono,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = AccentGold,
+                                                textAlign = TextAlign.End,
+                                                modifier = Modifier.width(48.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (globalTopScorers.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "ALL-TIME TOP SCORERS",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = AccentGold,
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                )
+                            }
+                            itemsIndexed(globalTopScorers) { index, scorer ->
+                              StaggeredEntrance(index = index) {
+                                val icon = when (index) {
+                                    0 -> "👑"
+                                    1 -> "🥈"
+                                    2 -> "🥉"
+                                    else -> "${index + 1}."
+                                }
+                                CopaCard(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(modifier = Modifier.weight(1f)) {
+                                            Text(icon, modifier = Modifier.width(32.dp))
+                                            Text(scorer.playerName, fontWeight = FontWeight.Bold, color = OnBackground)
+                                        }
+                                        Text(
+                                            "${scorer.goals}",
+                                            fontFamily = JetBrainsMono,
+                                            fontWeight = FontWeight.Bold,
+                                            color = AccentGold
+                                        )
+                                    }
+                                }
+                              }
+                            }
+                            item {
+                                Spacer(modifier = Modifier.height(32.dp))
+                                CopaCard(modifier = Modifier.fillMaxWidth()) {
+                                    GoalsBarChart(
+                                        scorers = globalTopScorers,
+                                        modifier = Modifier.padding(16.dp)
+                                    )
+                                }
+                            }
+                        }
+
                         item {
+                            Spacer(modifier = Modifier.height(32.dp))
                             Text(
                                 "GLOBAL LEADERBOARD",
                                 style = MaterialTheme.typography.headlineSmall,
@@ -214,21 +357,33 @@ fun StatsScreen(navController: NavController, viewModel: StatsViewModel = hiltVi
                             CopaCard(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(modifier = Modifier.weight(1f)) {
+                                    Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             "${index + 1}.",
                                             modifier = Modifier.width(28.dp),
                                             fontFamily = JetBrainsMono,
                                             color = OnBackground.copy(alpha = 0.5f)
                                         )
+                                        if (stat.lastTeamName != null) {
+                                            TeamBadge(
+                                                badgeUrl = stat.lastTeamBadgeUrl,
+                                                teamName = stat.lastTeamName,
+                                                size = 32.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                        }
                                         Column {
                                             Text(stat.playerName, fontWeight = FontWeight.Bold, color = OnBackground)
+                                            val winRate = if (stat.totalMatches > 0) stat.totalWins * 100 / stat.totalMatches else 0
                                             Text(
-                                                "Win Rate: ${if (stat.totalMatches > 0) stat.totalWins * 100 / stat.totalMatches else 0}%",
+                                                if (stat.lastTeamName != null) "${stat.lastTeamName} • $winRate% WR" else "Win Rate: $winRate%",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = OnBackground.copy(alpha = 0.4f)
+                                                color = OnBackground.copy(alpha = 0.4f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }

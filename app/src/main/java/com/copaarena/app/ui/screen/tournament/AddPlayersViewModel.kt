@@ -83,4 +83,14 @@ class AddPlayersViewModel @Inject constructor(
             _isLoading.value = false
         }
     }
+
+    /** Preloads the league+team pickers for editing a player who was already assigned a
+     *  team, so reopening their card shows the current selection instead of a blank form. */
+    fun prefillForEdit(teamId: Int, onLoaded: (CachedTeamEntity?) -> Unit) {
+        viewModelScope.launch {
+            val team = teamRepository.getTeamById(teamId)
+            setSelectedLeagueId(team?.leagueId)
+            onLoaded(team)
+        }
+    }
 }
