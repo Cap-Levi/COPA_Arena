@@ -2,6 +2,7 @@ package com.copaarena.app.ui.screen.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.copaarena.app.data.db.dao.TournamentHistoryEntry
 import com.copaarena.app.data.db.entity.TournamentEntity
 import com.copaarena.app.data.repository.MatchRepository
 import com.copaarena.app.data.repository.TournamentRepository
@@ -51,4 +52,11 @@ class HomeViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0f)
+
+    // Most recently completed tournament (list is already createdAt DESC) — drives the
+    // "Last Champion" card so Home has something to show even with no active tournament.
+    val lastCompletedTournament: StateFlow<TournamentHistoryEntry?> = tournamentRepository
+        .getTournamentHistoryWithWinners()
+        .map { list -> list.firstOrNull { it.status == "COMPLETED" && it.winnerName != null } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 }

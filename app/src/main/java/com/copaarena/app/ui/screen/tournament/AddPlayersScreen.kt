@@ -89,13 +89,11 @@ fun AddPlayersScreen(
                             style = MaterialTheme.typography.headlineMedium,
                             color = AccentGold
                         )
-                        if (!isRestartMode) {
-                            Text(
-                                "${players.size} player${if (players.size != 1) "s" else ""} added",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OnBackground.copy(alpha = 0.4f)
-                            )
-                        }
+                        Text(
+                            "${players.size} player${if (players.size != 1) "s" else ""} added",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OnBackground.copy(alpha = 0.4f)
+                        )
                     }
                 },
                 navigationIcon = {
@@ -114,28 +112,26 @@ fun AddPlayersScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            if (!isRestartMode) {
-                Button(
-                    onClick = {
-                        selectedPlayerToEdit = null
-                        selectedPlayerIndex = null
-                        newPlayerName = ""
-                        selectedTeam = null
-                        viewModel.setSelectedLeagueId(null)
-                        viewModel.setSearchQuery("")
-                        showBottomSheet = true
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .height(48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariant),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.PersonAdd, contentDescription = "Add Player", tint = AccentGold)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Player", color = OnBackground, fontWeight = FontWeight.Bold)
-                }
+            Button(
+                onClick = {
+                    selectedPlayerToEdit = null
+                    selectedPlayerIndex = null
+                    newPlayerName = ""
+                    selectedTeam = null
+                    viewModel.setSelectedLeagueId(null)
+                    viewModel.setSearchQuery("")
+                    showBottomSheet = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SurfaceVariant),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.PersonAdd, contentDescription = "Add Player", tint = AccentGold)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Add Player", color = OnBackground, fontWeight = FontWeight.Bold)
             }
 
             if (players.isEmpty()) {
@@ -232,7 +228,7 @@ fun AddPlayersScreen(
                 Column(modifier = Modifier.padding(16.dp).fillMaxHeight(0.8f)) {
                     Text(
                         when {
-                            isRestartMode -> "CHANGE TEAM"
+                            selectedPlayerIndex != null && isRestartMode -> "CHANGE TEAM"
                             selectedPlayerIndex != null -> "EDIT PLAYER"
                             else -> "ADD NEW PLAYER"
                         },
@@ -248,7 +244,10 @@ fun AddPlayersScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    if (!isRestartMode) {
+                    // Restarting a tournament only skips the name field when editing an
+                    // *existing* carried-over player (their name is fixed) — a brand new
+                    // player added mid-restart still needs one, same as the normal flow.
+                    if (!isRestartMode || selectedPlayerIndex == null) {
                         OutlinedTextField(
                             value = newPlayerName,
                             onValueChange = { newPlayerName = it },
@@ -491,7 +490,7 @@ fun AddPlayersScreen(
                                 viewModel.setSelectedLeagueId(null)
                                 viewModel.setSearchQuery("")
                                 selectedTeam = null
-                            } else if (!isRestartMode && newPlayerName.isNotBlank() && selectedTeam != null) {
+                            } else if (newPlayerName.isNotBlank() && selectedTeam != null) {
                                 if (selectedPlayerIndex != null) {
                                     sharedViewModel.updatePlayerAt(
                                         index = selectedPlayerIndex!!,
@@ -523,7 +522,8 @@ fun AddPlayersScreen(
                                 selectedTeam = null
                             }
                         },
-                        enabled = selectedTeam != null && (isRestartMode || newPlayerName.isNotBlank()),
+                        enabled = selectedTeam != null &&
+                            ((isRestartMode && selectedPlayerIndex != null) || newPlayerName.isNotBlank()),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
@@ -535,7 +535,7 @@ fun AddPlayersScreen(
                     ) {
                         Text(
                             when {
-                                isRestartMode -> "Update Team"
+                                isRestartMode && selectedPlayerIndex != null -> "Update Team"
                                 selectedPlayerIndex != null -> "Save Changes"
                                 else -> "Add Player"
                             },

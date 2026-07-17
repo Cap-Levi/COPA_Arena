@@ -29,6 +29,8 @@ import com.copaarena.app.ui.navigation.Screen
 import com.copaarena.app.ui.theme.*
 import com.copaarena.app.ui.components.CopaBottomNavigationBar
 import com.copaarena.app.ui.components.CopaCard
+import com.copaarena.app.ui.components.TeamBadge
+import androidx.compose.material.icons.filled.EmojiEvents
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +43,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
 
     val activeTournament by viewModel.activeTournament.collectAsStateWithLifecycle()
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val lastCompleted by viewModel.lastCompletedTournament.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -172,6 +175,54 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                             Icon(Icons.Default.Add, contentDescription = null, tint = OnPrimary)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Start New Tournament", color = OnPrimary, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            val champion = lastCompleted
+            if (champion != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                CopaCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { navController.navigate(Screen.TournamentDetail.createRoute(champion.id)) }
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.EmojiEvents,
+                            contentDescription = null,
+                            tint = AccentGold,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "LAST CHAMPION",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = AccentGold.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                champion.winnerName ?: "",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = OnBackground
+                            )
+                            Text(
+                                "${champion.name} • ${champion.winnerTeamName ?: "Unknown"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = OnBackground.copy(alpha = 0.5f)
+                            )
+                        }
+                        if (champion.winnerTeamName != null) {
+                            TeamBadge(
+                                badgeUrl = champion.winnerTeamBadgeUrl,
+                                teamName = champion.winnerTeamName,
+                                size = 40.dp
+                            )
                         }
                     }
                 }

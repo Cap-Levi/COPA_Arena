@@ -2,7 +2,7 @@ package com.copaarena.app.ui.screen.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.copaarena.app.data.db.entity.TournamentEntity
+import com.copaarena.app.data.db.dao.TournamentHistoryEntry
 import com.copaarena.app.domain.usecase.GetTournamentHistoryUseCase
 import com.copaarena.app.data.repository.TournamentRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,12 +18,12 @@ class HistoryViewModel @Inject constructor(
     private val tournamentRepository: TournamentRepository
 ) : ViewModel() {
 
-    val history: StateFlow<List<TournamentEntity>> = getTournamentHistoryUseCase.invoke()
+    val history: StateFlow<List<TournamentHistoryEntry>> = getTournamentHistoryUseCase.invoke()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun deleteTournament(tournament: TournamentEntity) {
+    fun deleteTournament(entry: TournamentHistoryEntry) {
         viewModelScope.launch {
-            tournamentRepository.deleteTournament(tournament)
+            tournamentRepository.deleteTournamentById(entry.id)
         }
     }
 }

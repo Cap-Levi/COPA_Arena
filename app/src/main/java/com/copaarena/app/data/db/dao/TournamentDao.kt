@@ -15,6 +15,24 @@ data class TournamentWinsSummary(
     val lastTeamBadgeUrl: String?
 )
 
+// One row per tournament (any status), left-joined against its winner's player row —
+// winnerName/winnerTeamName/winnerTeamBadgeUrl are only non-null for a COMPLETED
+// tournament that actually has a winnerId set.
+data class TournamentHistoryEntry(
+    val id: Long,
+    val name: String,
+    val date: Long,
+    val format: String,
+    val matchesPerFixture: Int,
+    val status: String,
+    val winnerId: Long?,
+    val mvpPlayerId: Long?,
+    val createdAt: Long,
+    val winnerName: String?,
+    val winnerTeamName: String?,
+    val winnerTeamBadgeUrl: String?
+)
+
 @Dao
 interface TournamentDao {
     @Insert
@@ -25,6 +43,9 @@ interface TournamentDao {
     
     @Delete
     suspend fun delete(t: TournamentEntity)
+
+    @Query("DELETE FROM tournaments WHERE id = :id")
+    suspend fun deleteById(id: Long)
     
     @Query("SELECT * FROM tournaments WHERE status = 'ACTIVE' ORDER BY createdAt DESC LIMIT 1")
     fun getActiveTournament(): Flow<TournamentEntity?>
@@ -71,4 +92,12 @@ interface TournamentDao {
         ORDER BY tournamentsWon DESC
     """)
     fun getTournamentWinsSummary(): Flow<List<TournamentWinsSummary>>
+
+    @Query("""
+        SELECT t.*, p.name as winnerName, p.teamName as winnerTeamName, p.teamBadgeUrl as winnerTeamBadgeUrl
+        FROM tournaments t
+        LEFT JOIN players p ON t.winnerId = p.id
+        ORDER BY t.createdAt DESC
+    """)
+    fun getTournamentHistoryWithWinners(): Flow<List<TournamentHistoryEntry>>
 }

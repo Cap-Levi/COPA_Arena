@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +21,7 @@ import androidx.navigation.NavController
 import com.copaarena.app.ui.components.CopaBottomNavigationBar
 import com.copaarena.app.ui.components.CopaCard
 import com.copaarena.app.ui.components.StaggeredEntrance
+import com.copaarena.app.ui.components.TeamBadge
 import com.copaarena.app.ui.navigation.Screen
 import com.copaarena.app.ui.theme.*
 import java.text.SimpleDateFormat
@@ -102,7 +104,7 @@ fun HistoryScreen(
                                 }
                                 
                                 Spacer(modifier = Modifier.height(12.dp))
-                                
+
                                 if (tournament.status == "COMPLETED") {
                                     Badge(containerColor = SuccessColor.copy(alpha = 0.2f), contentColor = SuccessColor) {
                                         Text("Completed", modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
@@ -110,6 +112,39 @@ fun HistoryScreen(
                                 } else {
                                     Badge(containerColor = SurfaceVariant, contentColor = OnBackground.copy(alpha = 0.6f)) {
                                         Text(tournament.status, modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp))
+                                    }
+                                }
+
+                                if (tournament.winnerName != null) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.EmojiEvents,
+                                            contentDescription = null,
+                                            tint = AccentGold,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            tournament.winnerName,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = OnBackground
+                                        )
+                                        if (tournament.winnerTeamName != null) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            TeamBadge(
+                                                badgeUrl = tournament.winnerTeamBadgeUrl,
+                                                teamName = tournament.winnerTeamName,
+                                                size = 20.dp
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                tournament.winnerTeamName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = OnBackground.copy(alpha = 0.6f)
+                                            )
+                                        }
                                     }
                                 }
                             }

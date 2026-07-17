@@ -1,6 +1,7 @@
 package com.copaarena.app.data.repository
 
 import com.copaarena.app.data.db.dao.TournamentDao
+import com.copaarena.app.data.db.dao.TournamentHistoryEntry
 import com.copaarena.app.data.db.dao.TournamentWinsSummary
 import com.copaarena.app.data.db.entity.TournamentEntity
 import kotlinx.coroutines.flow.Flow
@@ -54,11 +55,19 @@ class TournamentRepository @Inject constructor(
         tournamentDao.delete(tournament)
     }
 
+    suspend fun deleteTournamentById(id: Long) {
+        tournamentDao.deleteById(id)
+    }
+
     suspend fun deleteAllTournaments() {
         tournamentDao.deleteAll()
     }
 
     fun getTournamentWinsSummary(): Flow<List<TournamentWinsSummary>> {
         return tournamentDao.getTournamentWinsSummary()
+    }
+
+    fun getTournamentHistoryWithWinners(): Flow<List<TournamentHistoryEntry>> {
+        return tournamentDao.getTournamentHistoryWithWinners()
     }
 }
