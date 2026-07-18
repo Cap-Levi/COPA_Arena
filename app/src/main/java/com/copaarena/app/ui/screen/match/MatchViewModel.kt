@@ -85,11 +85,20 @@ class MatchViewModel @Inject constructor(
     val hapticEnabled: StateFlow<Boolean> = settingsDataStore.hapticEnabledFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    // Opening a not-yet-played match card is kickoff — blow the whistle once per screen visit,
+    // same as a real ref starting the match. Guarded so re-emissions of the same PENDING match
+    // (e.g. after logging a goal, before it's confirmed) don't replay it.
+    private var kickoffWhistlePlayed = false
+
     init {
         viewModelScope.launch {
             matchRepository.getMatchById(matchId).collect { m ->
                 _match.value = m
                 if (m != null) {
+                    if (!kickoffWhistlePlayed && m.status == "PENDING") {
+                        kickoffWhistlePlayed = true
+                        soundManager.playWhistle()
+                    }
                     val pA = playerDao.getPlayerById(m.playerAId)
                     val pB = playerDao.getPlayerById(m.playerBId)
                     _playerA.value = pA
