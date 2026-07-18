@@ -10,6 +10,7 @@ import com.copaarena.app.data.db.entity.MatchEntity
 import com.copaarena.app.data.db.entity.PlayerEntity
 import com.copaarena.app.data.repository.MatchRepository
 import com.copaarena.app.data.repository.StatsRepository
+import com.copaarena.app.data.repository.TeamRepository
 import com.copaarena.app.data.repository.TournamentRepository
 import com.copaarena.app.domain.usecase.ConfirmMatchResultUseCase
 import com.copaarena.app.domain.usecase.FixtureOutcomeResolver
@@ -105,10 +106,10 @@ class MatchViewModel @Inject constructor(
                     _playerB.value = pB
 
                     if (pA?.teamId != null && pA.teamId > 0) {
-                        _fifaPlayersA.value = fifaDao.getPlayersByClub(pA.teamId)
+                        _fifaPlayersA.value = playersForTeamId(pA.teamId)
                     }
                     if (pB?.teamId != null && pB.teamId > 0) {
-                        _fifaPlayersB.value = fifaDao.getPlayersByClub(pB.teamId)
+                        _fifaPlayersB.value = playersForTeamId(pB.teamId)
                     }
                 }
             }
@@ -119,6 +120,16 @@ class MatchViewModel @Inject constructor(
             }
         }
     }
+
+    /** A player's `teamId` is either a real fc26 club id or, for an International team, a
+     *  nation id offset by [TeamRepository.NATION_ID_OFFSET] — routes to the matching roster
+     *  query so the goal-scorer picker works for national teams too. */
+    private suspend fun playersForTeamId(teamId: Int): List<PlayerDbEntity> =
+        if (teamId >= TeamRepository.NATION_ID_OFFSET) {
+            fifaDao.getPlayersByNationality(teamId - TeamRepository.NATION_ID_OFFSET)
+        } else {
+            fifaDao.getPlayersByClub(teamId)
+        }
 
     fun addGoal(scorerId: Long, isOwnGoal: Boolean, fifaPlayerName: String? = null) {
         viewModelScope.launch {

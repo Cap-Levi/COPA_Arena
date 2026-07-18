@@ -3,6 +3,8 @@ package com.copaarena.app.data.repository
 import com.copaarena.app.data.db.dao.TeamCacheDao
 import com.copaarena.app.data.db.entity.CachedTeamEntity
 import com.copaarena.app.data.db.fifa.dao.FifaDao
+import com.copaarena.app.data.db.fifa.entity.LeagueDbEntity
+import com.copaarena.app.data.db.fifa.entity.NationDbEntity
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,6 +14,11 @@ class TeamRepository @Inject constructor(
     private val fifaDao: FifaDao
 ) {
     suspend fun searchTeams(query: String, leagueId: Int? = null): List<CachedTeamEntity> {
+        if (leagueId == INTERNATIONAL_LEAGUE_ID) {
+            val nations = if (query.isNotBlank()) fifaDao.searchNations(query) else fifaDao.getNationsWithPlayers()
+            return nations.map { it.toCachedTeamEntity() }
+        }
+
         val clubs = if (leagueId != null && query.isBlank()) {
             fifaDao.getClubsByLeague(leagueId)
         } else if (query.isNotBlank()) {
@@ -41,9 +48,14 @@ class TeamRepository @Inject constructor(
         }
     }
 
-    /** Looks up a single club by id — used to pre-fill the league/team pickers when editing
-     *  a player who was already assigned a team (e.g. reopening their Add Players card). */
+    /** Looks up a single club (or, for a nation-space id, a national team) by id — used to
+     *  pre-fill the league/team pickers when editing a player who was already assigned a team
+     *  (e.g. reopening their Add Players card). */
     suspend fun getTeamById(id: Int): CachedTeamEntity? {
+        if (id >= NATION_ID_OFFSET) {
+            val nation = fifaDao.getNationById(id - NATION_ID_OFFSET) ?: return null
+            return nation.toCachedTeamEntity()
+        }
         val club = fifaDao.getClubById(id) ?: return null
         val leagueName = club.leagueId?.let { fifaDao.getLeagueById(it)?.leagueName ?: "League $it" } ?: "Unknown League"
         return CachedTeamEntity(
@@ -57,6 +69,16 @@ class TeamRepository @Inject constructor(
         )
     }
 
+    private fun NationDbEntity.toCachedTeamEntity(): CachedTeamEntity = CachedTeamEntity(
+        teamId = NATION_ID_OFFSET + nationalityId,
+        name = nationalityName ?: "Unknown",
+        badgeUrl = nationBadgeAssetUri(nationalityId),
+        overall = 80,
+        league = "International",
+        leagueId = INTERNATIONAL_LEAGUE_ID,
+        nation = nationalityName ?: "Unknown"
+    )
+
     companion object {
         /** Local asset path for a downloaded club badge (bundled at `assets/badges/teams/{id}.png`).
          * Not every club has a badge — Coil's AsyncImage simply fails to load ones that don't exist,
@@ -65,6 +87,22 @@ class TeamRepository @Inject constructor(
 
         /** Local asset path for a downloaded league badge (bundled at `assets/badges/leagues/{id}.png`). */
         fun leagueBadgeAssetUri(leagueId: Int): String = "file:///android_asset/badges/leagues/$leagueId.png"
+
+        /** Local asset path for a national team's federation crest (bundled at
+         * `assets/badges/nations/{nationality_id}.png`) — a real crest (AFA, DFB, FA, ...), not a flag. */
+        fun nationBadgeAssetUri(nationalityId: Int): String = "file:///android_asset/badges/nations/$nationalityId.png"
+
+        /** Sentinel `leagueId` for the synthetic "International" entry in the league picker —
+         * chosen negative (every real fc26.db league_id is positive) but distinct from -1,
+         * which AddPlayersScreen's league dropdown already uses as the LazyColumn item key for
+         * the "All Leagues" (null leagueId) entry. */
+        const val INTERNATIONAL_LEAGUE_ID = -2
+
+        /** fc26.db's club_team_id and nationality_id are separate id spaces that can numerically
+         * collide (e.g. a club and a nation could both be id 7) — national "team" ids are stored
+         * offset by this much wherever a plain Int teamId has to represent either space (e.g.
+         * `PlayerEntity.teamId`), safely above the highest real club_team_id (~132681). */
+        const val NATION_ID_OFFSET = 1_000_000
 
         /** fc26.db's `leagues.league_name` has no country/region qualifier, so several distinct
          * leagues share an identical display name (e.g. "Bundesliga" is both Germany's and Austria's,
@@ -92,7 +130,11 @@ class TeamRepository @Inject constructor(
             LEAGUE_COUNTRY[leagueId]?.let { "$leagueName ($it)" } ?: leagueName
     }
 
-    suspend fun getAllLeagues() = fifaDao.getAllLeagues()
+    // Synthetic entry alongside the real leagues so "International" shows up in the League
+    // picker like any other league — picking it lists national teams instead of clubs.
+    suspend fun getAllLeagues(): List<LeagueDbEntity> =
+        listOf(LeagueDbEntity(leagueId = INTERNATIONAL_LEAGUE_ID, leagueName = "International", leagueLevel = 0)) +
+            fifaDao.getAllLeagues()
 
     suspend fun syncLeague(leagueId: Int) {
         // No longer needed, DB is fully offline
