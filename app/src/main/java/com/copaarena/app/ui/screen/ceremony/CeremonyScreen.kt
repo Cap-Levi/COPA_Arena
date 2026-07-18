@@ -63,8 +63,6 @@ fun CeremonyScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Primary)) {
-        // Fallback or Lottie if we had one
-        // Try-catch Lottie load as specified in Plan.md
         var lottieFailed by remember { mutableStateOf(false) }
         val composition by rememberLottieComposition(LottieCompositionSpec.Asset("lottie/trophy_reveal.json"))
         
