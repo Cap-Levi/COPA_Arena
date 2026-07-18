@@ -60,18 +60,15 @@ fun BracketScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            (tournament?.name ?: "Bracket").uppercase(),
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = AccentGold
-                        )
-                        Text(
-                            tournament?.format ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = OnBackground.copy(alpha = 0.5f)
-                        )
-                    }
+                    // Single-line, headlineLarge — matches Home/Stats/History's bottom-nav-tab
+                    // header convention instead of standing out as its own taller two-line block.
+                    Text(
+                        (tournament?.name ?: "BRACKET").uppercase(),
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = AccentGold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 },
                 actions = {
                     ActiveTournamentSwitcher(
@@ -123,6 +120,14 @@ fun BracketScreen(
             }
         } else {
             Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                // Format now lives here instead of a second topbar line — keeps the topbar the
+                // same single-line height as Home/Stats/History.
+                Text(
+                    tournament?.format ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = OnBackground.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
                 // Tabs
                 TabRow(
                     selectedTabIndex = selectedTabIndex,

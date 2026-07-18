@@ -48,7 +48,10 @@ fun ActiveTournamentSwitcher(
     val current = activeTournaments.find { it.id == currentTournamentId }
     val label = current?.name ?: if (activeTournaments.isEmpty()) "No tournaments" else "Switch"
 
-    Box {
+    // Always used as a TopAppBar trailing action — Material3's own end padding for actions is
+    // only 4dp, which reads as glued to the screen edge. Bake in a bit more breathing room here
+    // rather than making every call site remember to add it.
+    Box(modifier = Modifier.padding(end = 12.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier

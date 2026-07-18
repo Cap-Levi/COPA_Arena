@@ -74,8 +74,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 .padding(horizontal = 24.dp)
                 .alpha(alpha)
                 .scale(scale),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Tagline
             Text(
@@ -85,8 +84,14 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
-
+            // Centers the tournament card(s) in the space between the tagline and the history
+            // button, independent of either's height — was previously part of one Arrangement
+            // .Center group with the trailing button, which visually skewed the card upward.
+            Column(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
             val tournament = activeTournament
             if (tournament != null) {
                 // Active tournament — Continue card
@@ -226,6 +231,7 @@ fun HomeScreen(navController: NavController, viewModel: HomeViewModel = hiltView
                         }
                     }
                 }
+            }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
